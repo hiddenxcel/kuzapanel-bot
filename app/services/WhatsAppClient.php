@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../models/Message.php';
+
 class WhatsAppClient
 {
     private string $token;
@@ -181,6 +183,57 @@ class WhatsAppClient
             return false;
         }
 
+        $this->logOutgoingMessage($payload);
+
         return true;
+    }
+
+    /**
+     * Log a sent message into the chat-log table for the admin inbox, as a
+     * human-readable summary. Skips read-receipts/typing (no 'to') and
+     * reactions (not a real message). Wrapped in try/catch so a logging
+     * failure never blocks message delivery.
+     */
+    private function logOutgoingMessage(array $payload): void
+    {
+        if (empty($payload['to']) || $payload['type'] === 'reaction') {
+            return;
+        }
+
+        try {
+            $type = $payload['type'];
+
+            if ($type === 'text') {
+                Message::log($payload['to'], 'out', 'text', $payload['text']['body']);
+
+                return;
+            }
+
+            if ($type === 'image') {
+                Message::log($payload['to'], 'out', 'image', '🖼️ [Picha] ' . ($payload['image']['caption'] ?? ''));
+
+                return;
+            }
+
+            if ($type === 'interactive') {
+                $interactiveType = $payload['interactive']['type'];
+                $bodyText = $payload['interactive']['body']['text'] ?? '';
+
+                $prefix = match ($interactiveType) {
+                    'list' => '📋 ',
+                    'button' => '🔘 ',
+                    'cta_url' => '🔗 ',
+                    default => '',
+                };
+
+                $suffix = $interactiveType === 'cta_url'
+                    ? ' [' . ($payload['interactive']['action']['parameters']['display_text'] ?? '') . ': ' . ($payload['interactive']['action']['parameters']['url'] ?? '') . ']'
+                    : '';
+
+                Message::log($payload['to'], 'out', $interactiveType, $prefix . $bodyText . $suffix);
+            }
+        } catch (\Throwable $e) {
+            error_log('[WhatsAppClient] Failed to log outgoing message: ' . $e->getMessage());
+        }
     }
 }

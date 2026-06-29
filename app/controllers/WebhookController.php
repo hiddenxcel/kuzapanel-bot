@@ -11,6 +11,7 @@ require_once __DIR__ . '/../models/Order.php';
 require_once __DIR__ . '/../models/Payment.php';
 require_once __DIR__ . '/../models/Customer.php';
 require_once __DIR__ . '/../models/PaymentGateway.php';
+require_once __DIR__ . '/../models/Message.php';
 require_once __DIR__ . '/../services/OrderFulfillment.php';
 require_once __DIR__ . '/../services/AdminNotifier.php';
 require_once __DIR__ . '/../helpers/MainMenu.php';
@@ -58,6 +59,8 @@ class WebhookController
         }
 
         $phone = $message['from'];
+
+        $this->logIncomingMessage($phone, $message);
 
         // Mark the incoming message as read (blue ticks) and show "typing…".
         if (!empty($message['message_id'])) {
@@ -112,15 +115,37 @@ class WebhookController
             $interactive = $msg['interactive'];
 
             if ($interactive['type'] === 'list_reply') {
-                return ['from' => $from, 'name' => $name, 'message_id' => $messageId, 'type' => 'selection', 'id' => $interactive['list_reply']['id']];
+                return ['from' => $from, 'name' => $name, 'message_id' => $messageId, 'type' => 'selection', 'id' => $interactive['list_reply']['id'], 'title' => $interactive['list_reply']['title'] ?? null];
             }
 
             if ($interactive['type'] === 'button_reply') {
-                return ['from' => $from, 'name' => $name, 'message_id' => $messageId, 'type' => 'selection', 'id' => $interactive['button_reply']['id']];
+                return ['from' => $from, 'name' => $name, 'message_id' => $messageId, 'type' => 'selection', 'id' => $interactive['button_reply']['id'], 'title' => $interactive['button_reply']['title'] ?? null];
             }
         }
 
         return ['from' => $from, 'name' => $name, 'message_id' => $messageId, 'type' => 'unsupported'];
+    }
+
+    /**
+     * Log the customer's inbound message into the chat-log table for the admin inbox.
+     * Wrapped in try/catch so a logging failure never breaks message handling.
+     */
+    private function logIncomingMessage(string $phone, array $message): void
+    {
+        try {
+            if ($message['type'] === 'text') {
+                Message::log($phone, 'in', 'text', $message['text'], $message['message_id'] ?? null);
+
+                return;
+            }
+
+            if ($message['type'] === 'selection') {
+                $body = '[Kabonyeza] ' . ($message['title'] ?? $message['id']);
+                Message::log($phone, 'in', 'selection', $body, $message['message_id'] ?? null);
+            }
+        } catch (\Throwable $e) {
+            error_log('[WebhookController] Failed to log incoming message: ' . $e->getMessage());
+        }
     }
 
     private function route(string $phone, array $session, array $message): void

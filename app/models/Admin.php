@@ -32,4 +32,35 @@ class Admin extends BaseModel
 
         return $admin;
     }
+
+    public static function find(int $id): ?array
+    {
+        $stmt = self::db()->prepare('SELECT * FROM admins WHERE id = ?');
+        $stmt->execute([$id]);
+
+        return $stmt->fetch() ?: null;
+    }
+
+    /**
+     * Returns false if the new username is already taken by another admin.
+     */
+    public static function updateUsername(int $id, string $newUsername): bool
+    {
+        $existing = self::findByUsername($newUsername);
+
+        if ($existing !== null && (int) $existing['id'] !== $id) {
+            return false;
+        }
+
+        $stmt = self::db()->prepare('UPDATE admins SET username = ? WHERE id = ?');
+
+        return $stmt->execute([$newUsername, $id]);
+    }
+
+    public static function updatePassword(int $id, string $newPassword): bool
+    {
+        $stmt = self::db()->prepare('UPDATE admins SET password_hash = ? WHERE id = ?');
+
+        return $stmt->execute([password_hash($newPassword, PASSWORD_DEFAULT), $id]);
+    }
 }

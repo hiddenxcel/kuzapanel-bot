@@ -80,4 +80,21 @@ class Session extends BaseModel
 
         return $row !== false && (int) $row['mins'] >= $timeoutMinutes;
     }
+
+    /**
+     * All mid-conversation sessions that have been idle for at least
+     * $timeoutMinutes — used by the cron job to proactively expire and notify
+     * customers, instead of waiting for their next inbound message.
+     */
+    public static function expiredSessions(int $timeoutMinutes = 15): array
+    {
+        $stmt = self::db()->prepare(
+            "SELECT *, TIMESTAMPDIFF(MINUTE, updated_at, NOW()) AS idle_minutes FROM sessions
+             WHERE state NOT IN ('IDLE', 'AWAITING_TOPUP_CONFIRMATION')
+               AND TIMESTAMPDIFF(MINUTE, updated_at, NOW()) >= ?"
+        );
+        $stmt->execute([$timeoutMinutes]);
+
+        return $stmt->fetchAll();
+    }
 }

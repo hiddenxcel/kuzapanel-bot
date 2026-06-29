@@ -2,13 +2,16 @@
 
 require_once __DIR__ . '/../../app/helpers/Auth.php';
 require_once __DIR__ . '/../../app/models/PaymentGateway.php';
+require_once __DIR__ . '/../../app/models/Admin.php';
 
 Auth::requireLogin();
 
 $error = null;
 $success = null;
+$accountError = null;
+$accountSuccess = null;
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_gateway') {
     $id = (int) ($_POST['id'] ?? 0);
     $data = [
         'api_key' => trim($_POST['api_key'] ?? ''),
@@ -25,7 +28,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_account') {
+    $adminId = (int) Auth::user()['id'];
+    $newUsername = trim($_POST['username'] ?? '');
+    $currentPassword = $_POST['current_password'] ?? '';
+    $newPassword = $_POST['new_password'] ?? '';
+    $confirmPassword = $_POST['confirm_password'] ?? '';
+
+    $admin = Admin::find($adminId);
+
+    if ($newUsername === '') {
+        $accountError = 'Jina la mtumiaji haliwezi kuwa tupu.';
+    } elseif ($admin === null || !password_verify($currentPassword, $admin['password_hash'])) {
+        $accountError = 'Password ya sasa sio sahihi.';
+    } elseif ($newPassword !== '' && $newPassword !== $confirmPassword) {
+        $accountError = 'Password mpya na uthibitisho wake hazifanani.';
+    } elseif ($newPassword !== '' && strlen($newPassword) < 6) {
+        $accountError = 'Password mpya lazima iwe na herufi/namba angalau 6.';
+    } elseif (!Admin::updateUsername($adminId, $newUsername)) {
+        $accountError = 'Jina hilo la mtumiaji linatumika tayari.';
+    } else {
+        if ($newPassword !== '') {
+            Admin::updatePassword($adminId, $newPassword);
+        }
+
+        $_SESSION['admin_username'] = $newUsername;
+        $accountSuccess = 'Akaunti yako imesasishwa.';
+    }
+}
+
 $gateways = PaymentGateway::all();
+$currentAdmin = Admin::find((int) Auth::user()['id']);
 
 $pageTitle = 'Mipangilio ya Malipo';
 $activeNav = 'settings';
@@ -39,10 +72,41 @@ require __DIR__ . '/includes/layout_header.php';
     <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
 <?php endif; ?>
 
+<div class="card">
+    <h3 style="margin-top:0;">👤 Akaunti Yangu</h3>
+    <?php if ($accountError !== null): ?>
+        <div class="alert alert-error"><?= htmlspecialchars($accountError) ?></div>
+    <?php endif; ?>
+    <?php if ($accountSuccess !== null): ?>
+        <div class="alert alert-success"><?= htmlspecialchars($accountSuccess) ?></div>
+    <?php endif; ?>
+    <form method="post">
+        <input type="hidden" name="action" value="update_account">
+        <div class="form-group">
+            <label>Jina la Mtumiaji (Username)</label>
+            <input type="text" name="username" value="<?= htmlspecialchars($currentAdmin['username']) ?>" required>
+        </div>
+        <div class="form-group">
+            <label>Password ya Sasa</label>
+            <input type="password" name="current_password" required placeholder="Thibitisha kwa password yako ya sasa">
+        </div>
+        <div class="form-group">
+            <label>Password Mpya (acha tupu kama hautaki kubadilisha)</label>
+            <input type="password" name="new_password" minlength="6" placeholder="Angalau herufi/namba 6">
+        </div>
+        <div class="form-group">
+            <label>Thibitisha Password Mpya</label>
+            <input type="password" name="confirm_password" minlength="6">
+        </div>
+        <button type="submit" class="btn btn-primary">Hifadhi Akaunti</button>
+    </form>
+</div>
+
 <?php foreach ($gateways as $g): ?>
 <div class="card">
     <h3 style="margin-top:0;"><?= htmlspecialchars($g['name']) ?> <span class="badge badge-<?= $g['status'] ?>"><?= $g['status'] ?></span></h3>
     <form method="post">
+        <input type="hidden" name="action" value="update_gateway">
         <input type="hidden" name="id" value="<?= $g['id'] ?>">
         <div class="form-group">
             <label>API Key</label>

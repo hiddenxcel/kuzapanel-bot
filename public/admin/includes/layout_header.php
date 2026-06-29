@@ -330,6 +330,8 @@
             <a href="index.php" class="<?= $activeNav === 'dashboard' ? 'active' : '' ?>"><i class="fa-solid fa-gauge"></i> Dashboard</a>
             <a href="orders.php" class="<?= $activeNav === 'orders' ? 'active' : '' ?>"><i class="fa-solid fa-receipt"></i> Orders</a>
             <a href="customers.php" class="<?= $activeNav === 'customers' ? 'active' : '' ?>"><i class="fa-solid fa-users"></i> Customers</a>
+            <a href="inbox.php" class="<?= $activeNav === 'inbox' ? 'active' : '' ?>"><i class="fa-solid fa-comments"></i> Inbox</a>
+            <a href="broadcast.php" class="<?= $activeNav === 'broadcast' ? 'active' : '' ?>"><i class="fa-solid fa-bullhorn"></i> Matangazo</a>
             <a href="reports.php" class="<?= $activeNav === 'reports' ? 'active' : '' ?>"><i class="fa-solid fa-chart-line"></i> Ripoti ya Mauzo</a>
             <a href="providers.php" class="<?= $activeNav === 'providers' ? 'active' : '' ?>"><i class="fa-solid fa-server"></i> Providers</a>
             <a href="services.php" class="<?= $activeNav === 'services' ? 'active' : '' ?>"><i class="fa-solid fa-layer-group"></i> Services</a>
