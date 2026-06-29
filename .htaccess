@@ -1,0 +1,13 @@
+# KuzaPanel Bot — root .htaccess
+# Safety net: if the subdomain document root is ever pointed at the bot/ root
+# instead of bot/public/, this blocks direct access to sensitive folders/files.
+
+Options -Indexes
+
+# Block access to everything except the public/ folder and assets
+RedirectMatch 403 ^/(app|config|cron|database|storage|tools|vendor)(/.*)?$
+
+# Block dotfiles (.env etc.)
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>

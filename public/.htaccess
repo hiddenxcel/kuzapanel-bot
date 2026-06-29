@@ -1,0 +1,33 @@
+# KuzaPanel Bot — public document root
+
+# Disable directory listing
+Options -Indexes
+
+# Protect dotfiles (e.g. .env if ever placed here by mistake)
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# Default charset
+AddDefaultCharset UTF-8
+
+# PWA: correct MIME type for the manifest
+<IfModule mod_mime.c>
+    AddType application/manifest+json .json
+</IfModule>
+
+# PWA: service worker must never be cached by the browser, otherwise
+# updates to it never get picked up.
+<FilesMatch "^sw\.js$">
+    <IfModule mod_headers.c>
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+    </IfModule>
+</FilesMatch>
+
+<FilesMatch "^manifest\.json$">
+    <IfModule mod_headers.c>
+        Header set Cache-Control "public, max-age=86400"
+    </IfModule>
+</FilesMatch>
