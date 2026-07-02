@@ -1,0 +1,22 @@
+---
+deployment:
+  tasks:
+    # cPanel clones this repo into a private "repository root" (e.g.
+    # /home/kuzahnoo/repositories/kuzapanel-bot). On "Deploy HEAD Commit" it
+    # runs these tasks from inside that clone, rsyncing the working tree into
+    # the live app directory while preserving server-only files not in git.
+    - export DEPLOYPATH=/home/kuzahnoo/bot.kuzapanel.com/
+    - /bin/rsync -av --delete
+      --no-perms --no-owner --no-group --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r
+      --exclude='.git'
+      --exclude='.gitignore'
+      --exclude='.cpanel.yml'
+      --exclude='config/.env'
+      --exclude='vendor/'
+      --exclude='tools/'
+      --exclude='storage/logs/'
+      --exclude='public/error_log'
+      ./ $DEPLOYPATH
+    # Force web-readable perms so Apache can read .htaccess, assets, etc.
+    - /usr/bin/find $DEPLOYPATH -type d -exec chmod 755 {} \;
+    - /usr/bin/find $DEPLOYPATH -type f -exec chmod 644 {} \;

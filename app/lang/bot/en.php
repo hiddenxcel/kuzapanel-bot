@@ -51,7 +51,7 @@ return [
     'menu_support_title' => '🎧 Customer Support',
     'menu_support_desc' => 'Talk to admin',
     'menu_settings_title' => '⚙️ Settings',
-    'menu_settings_desc' => 'Language and currency',
+    'menu_settings_desc' => 'Lugha and currency',
     'menu_group_title' => '👥 KuzaPanel Group',
     'menu_group_desc' => 'Join for our updates',
     'menu_website_title' => '🌐 KuzaPanel Website',

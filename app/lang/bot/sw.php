@@ -51,7 +51,7 @@ return [
     'menu_support_title' => '🎧 Huduma Kwa Wateja',
     'menu_support_desc' => 'Wasiliana na admin',
     'menu_settings_title' => '⚙️ Mipangilio',
-    'menu_settings_desc' => 'Lugha na sarafu',
+    'menu_settings_desc' => 'Language na sarafu',
     'menu_group_title' => '👥 KuzaPanel Group',
     'menu_group_desc' => 'Jiunge na taarifa zetu',
     'menu_website_title' => '🌐 KuzaPanel Website',
