@@ -166,7 +166,7 @@ return [
         "Unataka kuongeza {service} ngapi?\n\n" .
         "Chagua kifurushi 👇",
     'qty_total' => 'Jumla: {total} TZS',
-    'qty_custom_title' => '✏️ Au Andika Kiasi Chako',
+    'qty_custom_title' => '✏️ Kiasi Chako',
     'qty_custom_desc' => 'Min: {min} | Max: {max}',
     'qty_custom_prompt' => 'Tafadhali andika idadi (kati ya {min} na {max}) unayotaka:',
     'qty_package_reminder' => "⚠️ Tafadhali chagua kifurushi kutoka kwenye orodha hapo juu 👆\n\n_Tuma \"#\" kurudi mwanzo_",

@@ -166,7 +166,7 @@ return [
         "How many {service} would you like to add?\n\n" .
         "Choose a package 👇",
     'qty_total' => 'Total: {total} TZS',
-    'qty_custom_title' => '✏️ Or Enter Your Own Amount',
+    'qty_custom_title' => '✏️ Custom Amount',
     'qty_custom_desc' => 'Min: {min} | Max: {max}',
     'qty_custom_prompt' => 'Please type the quantity you want (between {min} and {max}):',
     'qty_package_reminder' => "⚠️ Please choose a package from the list above 👆\n\n_Send \"#\" to go back_",
