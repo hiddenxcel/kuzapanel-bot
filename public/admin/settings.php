@@ -1,8 +1,10 @@
 <?php
 
 require_once __DIR__ . '/../../app/helpers/Auth.php';
+require_once __DIR__ . '/../../app/helpers/Lang.php';
 require_once __DIR__ . '/../../app/models/PaymentGateway.php';
 require_once __DIR__ . '/../../app/models/Admin.php';
+require_once __DIR__ . '/../../app/models/AppSetting.php';
 
 Auth::requireLogin();
 
@@ -10,6 +12,13 @@ $error = null;
 $success = null;
 $accountError = null;
 $accountSuccess = null;
+$aiSuccess = null;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_ai_setting') {
+    $enabled = ($_POST['ai_enabled'] ?? '0') === '1';
+    AppSetting::set('ai_enabled', $enabled ? '1' : '0');
+    $aiSuccess = $enabled ? t('settings.ai_enabled_msg') : t('settings.ai_disabled_msg');
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_gateway') {
     $id = (int) ($_POST['id'] ?? 0);
@@ -21,10 +30,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
     ];
 
     if ($id <= 0) {
-        $error = 'Gateway sio sahihi.';
+        $error = t('settings.gateway_invalid');
     } else {
         PaymentGateway::update($id, $data);
-        $success = 'Mipangilio ya malipo imesasishwa.';
+        $success = t('settings.gateway_updated');
     }
 }
 
@@ -38,29 +47,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
     $admin = Admin::find($adminId);
 
     if ($newUsername === '') {
-        $accountError = 'Jina la mtumiaji haliwezi kuwa tupu.';
+        $accountError = t('settings.username_empty');
     } elseif ($admin === null || !password_verify($currentPassword, $admin['password_hash'])) {
-        $accountError = 'Password ya sasa sio sahihi.';
+        $accountError = t('settings.wrong_password');
     } elseif ($newPassword !== '' && $newPassword !== $confirmPassword) {
-        $accountError = 'Password mpya na uthibitisho wake hazifanani.';
+        $accountError = t('settings.password_mismatch');
     } elseif ($newPassword !== '' && strlen($newPassword) < 6) {
-        $accountError = 'Password mpya lazima iwe na herufi/namba angalau 6.';
+        $accountError = t('settings.password_too_short');
     } elseif (!Admin::updateUsername($adminId, $newUsername)) {
-        $accountError = 'Jina hilo la mtumiaji linatumika tayari.';
+        $accountError = t('settings.username_taken');
     } else {
         if ($newPassword !== '') {
             Admin::updatePassword($adminId, $newPassword);
         }
 
         $_SESSION['admin_username'] = $newUsername;
-        $accountSuccess = 'Akaunti yako imesasishwa.';
+        $accountSuccess = t('settings.account_updated');
     }
 }
 
 $gateways = PaymentGateway::all();
 $currentAdmin = Admin::find((int) Auth::user()['id']);
+$aiEnabled = AppSetting::isAiEnabled();
 
-$pageTitle = 'Mipangilio ya Malipo';
+$pageTitle = t('settings.title');
 $activeNav = 'settings';
 require __DIR__ . '/includes/layout_header.php';
 ?>
@@ -73,7 +83,28 @@ require __DIR__ . '/includes/layout_header.php';
 <?php endif; ?>
 
 <div class="card">
-    <h3 style="margin-top:0;">👤 Akaunti Yangu</h3>
+    <h3 style="margin-top:0;"><?= t('settings.ai_title') ?> <span class="badge badge-<?= $aiEnabled ? 'active' : 'inactive' ?>"><?= $aiEnabled ? t('settings.ai_active') : t('settings.ai_inactive') ?></span></h3>
+    <?php if ($aiSuccess !== null): ?>
+        <div class="alert alert-success"><?= htmlspecialchars($aiSuccess) ?></div>
+    <?php endif; ?>
+    <p style="margin-top:-8px;color:var(--text-soft);font-size:13px;">
+        <?= t('settings.ai_hint') ?>
+    </p>
+    <form method="post">
+        <input type="hidden" name="action" value="update_ai_setting">
+        <div class="form-group">
+            <label><?= t('settings.status') ?></label>
+            <select name="ai_enabled">
+                <option value="1" <?= $aiEnabled ? 'selected' : '' ?>><?= t('settings.ai_option_active') ?></option>
+                <option value="0" <?= !$aiEnabled ? 'selected' : '' ?>><?= t('settings.ai_option_inactive') ?></option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary"><?= t('settings.save') ?></button>
+    </form>
+</div>
+
+<div class="card">
+    <h3 style="margin-top:0;"><?= t('settings.account_title') ?></h3>
     <?php if ($accountError !== null): ?>
         <div class="alert alert-error"><?= htmlspecialchars($accountError) ?></div>
     <?php endif; ?>
@@ -83,22 +114,22 @@ require __DIR__ . '/includes/layout_header.php';
     <form method="post">
         <input type="hidden" name="action" value="update_account">
         <div class="form-group">
-            <label>Jina la Mtumiaji (Username)</label>
+            <label><?= t('settings.username') ?></label>
             <input type="text" name="username" value="<?= htmlspecialchars($currentAdmin['username']) ?>" required>
         </div>
         <div class="form-group">
-            <label>Password ya Sasa</label>
-            <input type="password" name="current_password" required placeholder="Thibitisha kwa password yako ya sasa">
+            <label><?= t('settings.current_password') ?></label>
+            <input type="password" name="current_password" required placeholder="<?= t('settings.current_password_placeholder') ?>">
         </div>
         <div class="form-group">
-            <label>Password Mpya (acha tupu kama hautaki kubadilisha)</label>
-            <input type="password" name="new_password" minlength="6" placeholder="Angalau herufi/namba 6">
+            <label><?= t('settings.new_password') ?></label>
+            <input type="password" name="new_password" minlength="6" placeholder="<?= t('settings.new_password_placeholder') ?>">
         </div>
         <div class="form-group">
-            <label>Thibitisha Password Mpya</label>
+            <label><?= t('settings.confirm_password') ?></label>
             <input type="password" name="confirm_password" minlength="6">
         </div>
-        <button type="submit" class="btn btn-primary">Hifadhi Akaunti</button>
+        <button type="submit" class="btn btn-primary"><?= t('settings.save_account') ?></button>
     </form>
 </div>
 
@@ -109,26 +140,26 @@ require __DIR__ . '/includes/layout_header.php';
         <input type="hidden" name="action" value="update_gateway">
         <input type="hidden" name="id" value="<?= $g['id'] ?>">
         <div class="form-group">
-            <label>API Key</label>
+            <label><?= t('settings.api_key') ?></label>
             <input type="text" name="api_key" value="<?= htmlspecialchars($g['api_key']) ?>">
         </div>
         <div class="form-group">
-            <label>API Secret (kama ipo)</label>
+            <label><?= t('settings.api_secret') ?></label>
             <input type="text" name="api_secret" value="<?= htmlspecialchars($g['api_secret']) ?>">
         </div>
         <div class="form-group">
-            <label>Ada ya Gateway (%) — kiwango wanachokata kwa kila muamala</label>
+            <label><?= t('settings.fee_percent') ?></label>
             <input type="number" name="fee_percent" step="0.01" min="0" max="100" value="<?= htmlspecialchars((string) $g['fee_percent']) ?>">
-            <small style="color: var(--text-soft);">Mfumo utamtaka mteja alipe zaidi ya kiasi anachochagua, ili baada ya ada hii kukatwa, kiasi alichokusudia kibaki kamili.</small>
+            <small style="color: var(--text-soft);"><?= t('settings.fee_percent_hint') ?></small>
         </div>
         <div class="form-group">
-            <label>Status</label>
+            <label><?= t('providers.status') ?></label>
             <select name="status">
-                <option value="active" <?= $g['status'] === 'active' ? 'selected' : '' ?>>Active</option>
-                <option value="inactive" <?= $g['status'] === 'inactive' ? 'selected' : '' ?>>Inactive</option>
+                <option value="active" <?= $g['status'] === 'active' ? 'selected' : '' ?>><?= t('providers.active') ?></option>
+                <option value="inactive" <?= $g['status'] === 'inactive' ? 'selected' : '' ?>><?= t('providers.inactive') ?></option>
             </select>
         </div>
-        <button type="submit" class="btn btn-primary">Hifadhi</button>
+        <button type="submit" class="btn btn-primary"><?= t('settings.save') ?></button>
     </form>
 </div>
 <?php endforeach; ?>

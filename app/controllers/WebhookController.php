@@ -12,9 +12,11 @@ require_once __DIR__ . '/../models/Payment.php';
 require_once __DIR__ . '/../models/Customer.php';
 require_once __DIR__ . '/../models/PaymentGateway.php';
 require_once __DIR__ . '/../models/Message.php';
+require_once __DIR__ . '/../models/AppSetting.php';
 require_once __DIR__ . '/../services/OrderFulfillment.php';
 require_once __DIR__ . '/../services/AdminNotifier.php';
 require_once __DIR__ . '/../helpers/MainMenu.php';
+require_once __DIR__ . '/../helpers/BotLang.php';
 
 class WebhookController
 {
@@ -26,6 +28,9 @@ class WebhookController
     private AdminNotifier $admin;
     private array $config;
 
+    /** Per-request cache of each phone's bot language. */
+    private array $langCache = [];
+
     public function __construct(array $config)
     {
         $this->config = $config;
@@ -35,6 +40,24 @@ class WebhookController
         $this->harakapay = new HarakaPayClient(PaymentGateway::resolveConfig('harakapay', $config['payments']['harakapay']));
         $this->deepseek = new DeepSeekClient($config['deepseek']);
         $this->admin = new AdminNotifier($config);
+    }
+
+    /**
+     * The customer's saved bot language (cached per request).
+     */
+    private function langFor(string $phone): string
+    {
+        if (!isset($this->langCache[$phone])) {
+            $this->langCache[$phone] = BotLang::forCustomer(Customer::findByPhone($phone));
+        }
+
+        return $this->langCache[$phone];
+    }
+
+    /** Convenience: translate a key in the caller's language. */
+    private function t(string $phone, string $key, array $vars = []): string
+    {
+        return BotLang::get($this->langFor($phone), $key, $vars);
     }
 
     public function verify(array $params): ?string
@@ -73,11 +96,7 @@ class WebhookController
         // Expire idle mid-conversation sessions (except while awaiting a payment webhook).
         if ($session['state'] !== 'AWAITING_TOPUP_CONFIRMATION' && Session::isExpired($session, 15)) {
             Session::reset($phone);
-            $this->whatsapp->sendText(
-                $phone,
-                "⏰ Muda wa mazungumzo yako umepita kwa kukaa kimya.\n\n" .
-                "Hakuna wasiwasi — tunaanza upya! 👇"
-            );
+            $this->whatsapp->sendText($phone, $this->t($phone, 'session_expired'));
             $this->sendMainMenu($phone, $message['name'] ?? null);
             Session::updateState($phone, 'AWAITING_MAIN_MENU');
 
@@ -176,6 +195,10 @@ class WebhookController
                 $this->handleMainMenuSelection($phone, $message);
                 break;
 
+            case 'AWAITING_LANGUAGE':
+                $this->handleLanguageSelection($phone, $message);
+                break;
+
             case 'AWAITING_PLATFORM':
                 $this->handlePlatformSelection($phone, $message);
                 break;
@@ -217,10 +240,7 @@ class WebhookController
                 break;
 
             case 'AWAITING_TOPUP_CONFIRMATION':
-                $this->whatsapp->sendText(
-                    $phone,
-                    'Tunasubiri uthibitisho wa malipo yako. Tutakutumia ujumbe mara malipo yatakapokamilika.'
-                );
+                $this->whatsapp->sendText($phone, $this->t($phone, 'awaiting_topup_confirmation'));
                 break;
 
             case 'AWAITING_AI_CHAT':
@@ -229,21 +249,35 @@ class WebhookController
 
             default:
                 Session::reset($phone);
-                $this->whatsapp->sendText($phone, "Samahani, hitilafu imetokea. Tuma '#' kuanza upya.");
+                $this->whatsapp->sendText($phone, $this->t($phone, 'route_error'));
         }
     }
 
     private function sendMainMenu(string $phone, ?string $name = null): void
     {
-        MainMenu::send($this->whatsapp, $phone, $name);
+        MainMenu::send($this->whatsapp, $phone, $name, $this->langFor($phone));
     }
 
     private const AI_HISTORY_LIMIT = 6;
 
     private function handleAiChat(string $phone, array $session, array $message): void
     {
+        if (!AppSetting::isAiEnabled()) {
+            $adminPhone = $this->config['admin']['phone_number'];
+            $waNumber = preg_replace('/[^0-9]/', '', $adminPhone);
+            $this->whatsapp->sendCtaUrl(
+                $phone,
+                $this->t($phone, 'ai_unavailable'),
+                $this->t($phone, 'btn_contact_admin'),
+                'https://wa.me/' . $waNumber
+            );
+            Session::reset($phone);
+
+            return;
+        }
+
         if ($message['type'] !== 'text' || trim($message['text']) === '') {
-            $this->whatsapp->sendText($phone, 'Tafadhali andika swali lako kwa maandishi.');
+            $this->whatsapp->sendText($phone, $this->t($phone, 'ai_ask_text'));
 
             return;
         }
@@ -255,8 +289,8 @@ class WebhookController
             $waNumber = preg_replace('/[^0-9]/', '', $adminPhone);
             $this->whatsapp->sendCtaUrl(
                 $phone,
-                "Sawa, bonyeza kitufe hapa chini kuongea na admin wetu moja kwa moja.",
-                'Wasiliana Na Admin',
+                $this->t($phone, 'ai_connect_admin'),
+                $this->t($phone, 'btn_contact_admin'),
                 'https://wa.me/' . $waNumber
             );
             Session::reset($phone);
@@ -266,14 +300,10 @@ class WebhookController
 
         $history = $session['temp_data']['ai_history'] ?? [];
 
-        $result = $this->deepseek->reply($history, $text);
+        $result = $this->deepseek->reply($history, $text, $this->langFor($phone));
 
         if (!$result['success']) {
-            $this->whatsapp->sendText(
-                $phone,
-                "⚠️ Samahani, sijaweza kupata jibu kwa sasa.\n\n" .
-                "Tuma neno *admin* kuongea na binadamu, au \"#\" kurudi menu kuu."
-            );
+            $this->whatsapp->sendText($phone, $this->t($phone, 'ai_error'));
 
             return;
         }
@@ -287,22 +317,41 @@ class WebhookController
         Session::updateState($phone, 'AWAITING_AI_CHAT', ['ai_history' => $history]);
     }
 
+    /**
+     * When a customer types free text instead of tapping a button/list option,
+     * answer their question with AI (one-off, no history) before repeating the
+     * reminder — without touching session state, so their place in the order
+     * flow (platform/service/quantity/etc.) is preserved.
+     */
+    private function respondWithAiFallback(string $phone, array $message, string $reminderText): void
+    {
+        if (!AppSetting::isAiEnabled() || $message['type'] !== 'text' || trim($message['text']) === '') {
+            $this->whatsapp->sendText($phone, $reminderText);
+
+            return;
+        }
+
+        $result = $this->deepseek->reply([], trim($message['text']), $this->langFor($phone));
+
+        if ($result['success']) {
+            $this->whatsapp->sendText($phone, $result['reply']);
+        }
+
+        $this->whatsapp->sendText($phone, $reminderText);
+    }
+
     private function sendPaymentSentMenu(string $phone, string $intro): void
     {
-        $body = $intro . "\n\n" .
-            "👇 Chagua huduma kuanza:";
+        $lang = $this->langFor($phone);
+        $body = BotLang::get($lang, 'payment_sent_menu', ['{intro}' => $intro]);
 
-        $this->whatsapp->sendList($phone, $body, 'Fungua Menyu', 'Main Menu', MainMenu::rows());
+        $this->whatsapp->sendList($phone, $body, BotLang::get($lang, 'btn_open_menu'), BotLang::get($lang, 'menu_header'), MainMenu::rows($lang));
     }
 
     private function handleMainMenuSelection(string $phone, array $message): void
     {
         if ($message['type'] !== 'selection' || !str_starts_with($message['id'], 'main:')) {
-            $this->whatsapp->sendText(
-                $phone,
-                "🤔 Samahani, sijaelewa.\n\n" .
-                "Tafadhali bonyeza *Fungua Menyu* hapo juu kuchagua, au tuma *#* kuona menu kuu."
-            );
+            $this->respondWithAiFallback($phone, $message, $this->t($phone, 'not_understood_menu'));
 
             return;
         }
@@ -316,13 +365,7 @@ class WebhookController
                 break;
 
             case 'topup':
-                $this->whatsapp->sendText(
-                    $phone,
-                    "💰 *WEKA PESA*\n\n" .
-                    "Tafadhali andika kiasi unachotaka kuweka kwenye salio lako (TZS).\n\n" .
-                    "📌 Mfano: 5000\n\n" .
-                    "Tuma \"#\" kurudi menu kuu."
-                );
+                $this->whatsapp->sendText($phone, $this->t($phone, 'topup_prompt'));
                 Session::updateState($phone, 'AWAITING_TOPUP_AMOUNT');
                 break;
 
@@ -342,44 +385,74 @@ class WebhookController
                 break;
 
             case 'support':
-                $this->whatsapp->sendText(
-                    $phone,
-                    "🎧 *Huduma Kwa Wateja*\n\n" .
-                    "Habari! Mimi ni msaidizi wa AI wa KuzaPanel. Niulize swali lolote kuhusu huduma zetu, malipo, au jinsi ya kuagiza.\n\n" .
-                    "💡 Ukihitaji kuongea na admin moja kwa moja, tuma neno *admin*.\n" .
-                    "_Tuma \"#\" wakati wowote kurudi menu kuu._"
-                );
-                Session::updateState($phone, 'AWAITING_AI_CHAT');
+                if (AppSetting::isAiEnabled()) {
+                    $this->whatsapp->sendText($phone, $this->t($phone, 'support_ai_intro'));
+                    Session::updateState($phone, 'AWAITING_AI_CHAT');
+                } else {
+                    $adminPhone = $this->config['admin']['phone_number'];
+                    $waNumber = preg_replace('/[^0-9]/', '', $adminPhone);
+                    $this->whatsapp->sendCtaUrl(
+                        $phone,
+                        $this->t($phone, 'support_cta'),
+                        $this->t($phone, 'btn_contact_admin'),
+                        'https://wa.me/' . $waNumber
+                    );
+                    Session::reset($phone);
+                }
                 break;
 
             case 'settings':
-                $this->whatsapp->sendText($phone, '⚙️ Mipangilio (lugha na sarafu) inakuja hivi karibuni. Tuma "#" kurudi.');
-                Session::reset($phone);
+                $this->sendLanguageChooser($phone);
+                Session::updateState($phone, 'AWAITING_LANGUAGE');
                 break;
 
             case 'group':
-                $this->whatsapp->sendText(
-                    $phone,
-                    "👥 *KuzaPanel Group*\n\nJiunge na group letu kupata taarifa za huduma zetu na maelekezo:\n{$this->config['links']['group_url']}"
-                );
+                $this->whatsapp->sendText($phone, $this->t($phone, 'group_info', ['{url}' => $this->config['links']['group_url']]));
                 Session::reset($phone);
                 break;
 
             case 'website':
-                $this->whatsapp->sendText(
-                    $phone,
-                    "🌐 *KuzaPanel Website*\n\nKupata huduma nyingi zaidi na kwa haraka na salama, tembelea tovuti yetu:\n{$this->config['links']['website_url']}"
-                );
+                $this->whatsapp->sendText($phone, $this->t($phone, 'website_info', ['{url}' => $this->config['links']['website_url']]));
                 Session::reset($phone);
                 break;
 
             default:
-                $this->whatsapp->sendText(
-                $phone,
-                "🤔 Samahani, sijaelewa.\n\n" .
-                "Tafadhali bonyeza *Fungua Menyu* hapo juu kuchagua, au tuma *#* kuona menu kuu."
-            );
+                $this->whatsapp->sendText($phone, $this->t($phone, 'not_understood_menu'));
         }
+    }
+
+    private function sendLanguageChooser(string $phone): void
+    {
+        $lang = $this->langFor($phone);
+
+        $this->whatsapp->sendButtons(
+            $phone,
+            BotLang::get($lang, 'settings_choose_language'),
+            [
+                ['id' => 'lang:sw', 'title' => BotLang::get($lang, 'lang_name_sw')],
+                ['id' => 'lang:en', 'title' => BotLang::get($lang, 'lang_name_en')],
+            ]
+        );
+    }
+
+    private function handleLanguageSelection(string $phone, array $message): void
+    {
+        if ($message['type'] !== 'selection' || !str_starts_with($message['id'], 'lang:')) {
+            $this->respondWithAiFallback($phone, $message, $this->t($phone, 'settings_press_language'));
+
+            return;
+        }
+
+        $chosen = BotLang::normalize(substr($message['id'], strlen('lang:')));
+
+        $customer = Customer::getOrCreate($phone);
+        Customer::setLang((int) $customer['id'], $chosen);
+        $this->langCache[$phone] = $chosen;
+
+        // Confirm in the newly chosen language, then reopen the menu in it.
+        $this->whatsapp->sendText($phone, BotLang::get($chosen, 'language_changed'));
+        $this->sendMainMenu($phone, $customer['name'] ?? null);
+        Session::updateState($phone, 'AWAITING_MAIN_MENU');
     }
 
     private function sendProfile(string $phone): void
@@ -388,11 +461,11 @@ class WebhookController
 
         $this->whatsapp->sendText(
             $phone,
-            "👤 *WASIFU WANGU*\n\n" .
-            "Jina: " . ($customer['name'] ?? 'Mteja') . "\n" .
-            "💰 Salio: " . number_format((float) $customer['balance'], 0) . " TZS\n" .
-            "📊 Jumla Umetumia: " . number_format((float) $customer['total_spent'], 0) . " TZS\n\n" .
-            "Tuma \"#\" kurudi kwenye menu kuu."
+            $this->t($phone, 'profile', [
+                '{name}' => $customer['name'] ?? $this->t($phone, 'default_customer_name'),
+                '{balance}' => number_format((float) $customer['balance'], 0),
+                '{spent}' => number_format((float) $customer['total_spent'], 0),
+            ])
         );
     }
 
@@ -421,21 +494,20 @@ class WebhookController
         $percent = (float) $this->config['referral']['percent'];
         $botNumber = $this->config['whatsapp']['display_number'];
 
-        $inviteText = rawurlencode("Habari! Nataka kukuza akaunti yangu ya mitandao. Tumia code yangu: REF {$code}");
+        $inviteText = rawurlencode($this->t($phone, 'referral_invite_text', ['{code}' => $code]));
         $waLink = "https://wa.me/{$botNumber}?text={$inviteText}";
 
         $referredCount = Customer::countReferrals((int) $customer['id']);
 
         $this->whatsapp->sendText(
             $phone,
-            "🎁 *MWALIKE RAFIKI, PATA BONUS*\n\n" .
-            "Mwalike rafiki yako atumie KuzaPanel. Rafiki akiweka pesa mara ya kwanza, " .
-            "wewe utapata *{$percent}%* ya kiasi alichoweka moja kwa moja kwenye salio lako! 💰\n\n" .
-            "🔑 Code yako: *{$code}*\n" .
-            "👥 Marafiki uliowaalika: {$referredCount}\n" .
-            "💵 Umechuma jumla: " . number_format((float) $customer['referral_earnings'], 0) . " TZS\n\n" .
-            "📲 Shiriki link hii na marafiki:\n{$waLink}\n\n" .
-            "Tuma \"#\" kurudi menu kuu."
+            $this->t($phone, 'referral_info', [
+                '{percent}' => $percent,
+                '{code}' => $code,
+                '{count}' => $referredCount,
+                '{earnings}' => number_format((float) $customer['referral_earnings'], 0),
+                '{link}' => $waLink,
+            ])
         );
     }
 
@@ -444,23 +516,27 @@ class WebhookController
         $orders = Order::byCustomer($phone);
 
         if ($orders === []) {
-            $this->whatsapp->sendText($phone, '📦 Hauna oda yoyote bado. Tuma "#" kuanza oda mpya.');
+            $this->whatsapp->sendText($phone, $this->t($phone, 'track_no_orders'));
 
             return;
         }
 
-        $lines = ["📦 *FUATILIA ODA*\n"];
+        $lines = [$this->t($phone, 'track_header')];
 
         foreach (array_slice($orders, 0, 10) as $order) {
             $service = Service::find($order['service_id']);
-            $serviceName = $service['name'] ?? 'Huduma';
+            $serviceName = $service['name'] ?? $this->t($phone, 'default_service_name');
 
-            $lines[] = "🆔 Oda #{$order['id']} — {$serviceName}\n" .
-                "   Kiasi: {$order['quantity']} | Gharama: " . number_format((float) $order['amount'], 0) . " TZS\n" .
-                "   Status: {$order['status']}";
+            $lines[] = $this->t($phone, 'track_line', [
+                '{id}' => $order['id'],
+                '{service}' => $serviceName,
+                '{qty}' => $order['quantity'],
+                '{amount}' => number_format((float) $order['amount'], 0),
+                '{status}' => $order['status'],
+            ]);
         }
 
-        $lines[] = "\nTuma \"#\" kurudi kwenye menu kuu.";
+        $lines[] = $this->t($phone, 'track_footer');
 
         $this->whatsapp->sendText($phone, implode("\n\n", $lines));
     }
@@ -470,11 +546,7 @@ class WebhookController
         $amount = (float) preg_replace('/[^0-9.]/', '', $message['text'] ?? '');
 
         if ($amount < 100) {
-            $this->whatsapp->sendText(
-                $phone,
-                "⚠️ Kiasi sio sahihi.\n\n" .
-                "Tafadhali andika kiasi unachotaka kuweka kwa namba.\n📌 Mfano: 5000"
-            );
+            $this->whatsapp->sendText($phone, $this->t($phone, 'topup_invalid'));
 
             return;
         }
@@ -512,14 +584,11 @@ class WebhookController
 
         $this->whatsapp->sendButtons(
             $phone,
-            "💳 *NJIA YA MALIPO*\n" .
-            "💰 Unahitaji: " . number_format((float) $amount, 0) . " TZS\n\n" .
-            "Utalipa " . number_format((float) $amount, 0) . " TZS.\n\n" .
-            "Unataka kulipia kwa namba gani?",
+            $this->t($phone, 'payment_method', ['{amount}' => number_format((float) $amount, 0)]),
             [
                 ['id' => 'pay_phone:saved', 'title' => '📱 ' . $savedPhone],
-                ['id' => 'pay_phone:other', 'title' => '✏️ Namba Nyingine'],
-                ['id' => 'pay_phone:cancel', 'title' => '❌ Sitisha'],
+                ['id' => 'pay_phone:other', 'title' => $this->t($phone, 'btn_other_number')],
+                ['id' => 'pay_phone:cancel', 'title' => $this->t($phone, 'btn_cancel')],
             ]
         );
 
@@ -540,11 +609,7 @@ class WebhookController
     private function handlePaymentPhoneChoice(string $phone, array $session, array $message): void
     {
         if ($message['type'] !== 'selection' || !str_starts_with($message['id'], 'pay_phone:')) {
-            $this->whatsapp->sendText(
-                $phone,
-                "⚠️ Tafadhali bonyeza moja ya vitufe hapo juu 👆\n\n" .
-                "_Tuma \"#\" kurudi mwanzo_"
-            );
+            $this->respondWithAiFallback($phone, $message, $this->t($phone, 'press_button_reminder'));
 
             return;
         }
@@ -552,20 +617,14 @@ class WebhookController
         $choice = substr($message['id'], strlen('pay_phone:'));
 
         if ($choice === 'cancel') {
-            $this->whatsapp->sendText($phone, 'Imesitishwa. Tuma "#" kuanza upya.');
+            $this->whatsapp->sendText($phone, $this->t($phone, 'cancelled'));
             Session::reset($phone);
 
             return;
         }
 
         if ($choice === 'other') {
-            $this->whatsapp->sendText(
-                $phone,
-                "📱 *NAMBA YA MALIPO*\n\n" .
-                "Tafadhali andika namba ya simu utakayolipia (Mobile Money).\n\n" .
-                "📌 Mfano: 0712345678\n\n" .
-                "Tuma \"#\" kurudi menu kuu."
-            );
+            $this->whatsapp->sendText($phone, $this->t($phone, 'payment_phone_prompt'));
             Session::updateState($phone, 'AWAITING_PAYMENT_PHONE_INPUT', $session['temp_data']);
 
             return;
@@ -584,11 +643,7 @@ class WebhookController
         }
 
         if (strlen($rawPhone) < 11) {
-            $this->whatsapp->sendText(
-                $phone,
-                "⚠️ Namba sio sahihi.\n\n" .
-                "Tafadhali andika namba kamili ya simu (Mobile Money).\n📌 Mfano: 0712345678"
-            );
+            $this->whatsapp->sendText($phone, $this->t($phone, 'payment_phone_invalid'));
 
             return;
         }
@@ -634,12 +689,7 @@ class WebhookController
 
         $minAmount = $this->minAmountForPhone($rawPhone);
         if ($amount < $minAmount) {
-            $this->whatsapp->sendText(
-                $phone,
-                "⚠️ Kiwango cha chini cha malipo kwa namba hii ni " . number_format($minAmount, 0) . " TZS.\n\n" .
-                "Tafadhali jaribu tena na kiasi cha juu zaidi, au tumia namba ya mtandao mwingine.\n\n" .
-                "Tuma \"#\" kuanza upya."
-            );
+            $this->whatsapp->sendText($phone, $this->t($phone, 'min_amount', ['{min}' => number_format($minAmount, 0)]));
             Session::reset($phone);
 
             return;
@@ -685,7 +735,7 @@ class WebhookController
         };
 
         if (!$result['success']) {
-            $this->whatsapp->sendText($phone, "Samahani, malipo hayakuanzishwa: {$result['message']}\nTuma \"#\" kuanza upya.");
+            $this->whatsapp->sendText($phone, $this->t($phone, 'payment_failed', ['{message}' => $result['message']]));
             Session::reset($phone);
 
             return;
@@ -705,10 +755,11 @@ class WebhookController
         if ($isStandalone) {
             $this->sendPaymentSentMenu(
                 $phone,
-                "🪙 Tumetuma ombi la malipo!\n\n" .
-                "📲 Angalia simu yako (USSD push) na ingiza PIN kuthibitisha *" . number_format($chargeAmount, 0) . " TZS*.\n\n" .
-                "🆔 Kumbukumbu: {$reference}\n\n" .
-                "💰 Salio lako litaongezwa kwa " . number_format($amount, 0) . " TZS moja kwa moja malipo yatakapothibitishwa."
+                $this->t($phone, 'topup_sent', [
+                    '{charge}' => number_format($chargeAmount, 0),
+                    '{reference}' => $reference,
+                    '{amount}' => number_format($amount, 0),
+                ])
             );
 
             Session::updateState($phone, 'AWAITING_MAIN_MENU');
@@ -719,12 +770,10 @@ class WebhookController
         // Order top-up: keep order data so the webhook can complete it after payment.
         $this->whatsapp->sendText(
             $phone,
-            "✅ *OMBI LIMETUMWA*\n\n" .
-            "Kiasi cha kulipa: *" . number_format($chargeAmount, 0) . " TZS*\n" .
-            "Namba: " . $this->localPhone($rawPhone) . "\n\n" .
-            "📲 Angalia simu yako — utapokea ujumbe wa kuthibitisha malipo (USSD). Weka PIN yako kukamilisha.\n\n" .
-            "🚀 Oda yako itakamilika moja kwa moja malipo yatakapothibitishwa.\n\n" .
-            "© KuzaPanel"
+            $this->t($phone, 'order_payment_sent', [
+                '{charge}' => number_format($chargeAmount, 0),
+                '{phone}' => $this->localPhone($rawPhone),
+            ])
         );
 
         Session::updateState($phone, 'AWAITING_TOPUP_CONFIRMATION', $data);
@@ -744,9 +793,9 @@ class WebhookController
         return self::PLATFORM_INFO[$platform]['emoji'] ?? '📱';
     }
 
-    private function platformDescription(string $platform): string
+    private function platformDescription(string $platform, string $phone): string
     {
-        return self::PLATFORM_INFO[$platform]['description'] ?? 'Huduma mbalimbali';
+        return self::PLATFORM_INFO[$platform]['description'] ?? $this->t($phone, 'platform_generic_desc');
     }
 
     private function sendPlatformMenu(string $phone, ?string $name = null): void
@@ -754,28 +803,26 @@ class WebhookController
         $platforms = Service::activePlatforms();
 
         if ($platforms === []) {
-            $this->whatsapp->sendText($phone, 'Samahani, hakuna huduma zinazopatikana kwa sasa.');
+            $this->whatsapp->sendText($phone, $this->t($phone, 'no_services'));
 
             return;
         }
 
-        $greetingName = $name !== null && $name !== '' ? $name : 'Mteja';
+        $greetingName = $name !== null && $name !== '' ? $name : $this->t($phone, 'default_customer_name');
 
         $rows = array_map(
             fn (string $platform) => [
                 'id' => 'platform:' . $platform,
                 'title' => $this->platformEmoji($platform) . ' ' . $platform,
-                'description' => $this->platformDescription($platform),
+                'description' => $this->platformDescription($platform, $phone),
             ],
             array_slice($platforms, 0, 10)
         );
 
         $this->whatsapp->sendList(
             $phone,
-            "📱 *CHAGUA MTANDAO*\n" .
-            "Sawa {$greetingName}, tukuze akaunti yako! 🚀\n\n" .
-            "Unataka kukuza mtandao gani leo?",
-            'Mitandao',
+            $this->t($phone, 'platform_menu', ['{name}' => $greetingName]),
+            $this->t($phone, 'btn_platforms'),
             'Platforms',
             $rows
         );
@@ -784,7 +831,7 @@ class WebhookController
     private function handlePlatformSelection(string $phone, array $message): void
     {
         if ($message['type'] !== 'selection' || !str_starts_with($message['id'], 'platform:')) {
-            $this->whatsapp->sendText($phone, 'Tafadhali chagua platform kutoka kwenye orodha.');
+            $this->respondWithAiFallback($phone, $message, $this->t($phone, 'choose_platform'));
 
             return;
         }
@@ -793,29 +840,31 @@ class WebhookController
         $services = Service::activeByPlatform($platform);
 
         if ($services === []) {
-            $this->whatsapp->sendText($phone, 'Samahani, hakuna huduma za platform hii kwa sasa. Tuma "#" kuanza upya.');
+            $this->whatsapp->sendText($phone, $this->t($phone, 'no_services_platform'));
             Session::reset($phone);
 
             return;
         }
 
-        $greetingName = ($message['name'] ?? null) !== null && $message['name'] !== '' ? $message['name'] : 'Mteja';
+        $greetingName = ($message['name'] ?? null) !== null && $message['name'] !== '' ? $message['name'] : $this->t($phone, 'default_customer_name');
 
         $rows = array_map(
             fn (array $service) => [
                 'id' => 'service:' . $service['id'],
                 'title' => mb_substr($service['name'], 0, 24),
-                'description' => number_format((float) $service['my_price'], 0) . ' TZS kwa 1000',
+                'description' => $this->t($phone, 'price_per_1000', ['{price}' => number_format((float) $service['my_price'], 0)]),
             ],
             array_slice($services, 0, 10)
         );
 
         $this->whatsapp->sendList(
             $phone,
-            "🎯 *CHAGUA HUDUMA ZA " . mb_strtoupper($platform) . "*\n" .
-            "Chaguo nzuri {$greetingName}! Umechagua {$platform}.\n\n" .
-            "Unahitaji nini haswa kwa akaunti yako? 👇",
-            'Chagua Huduma',
+            $this->t($phone, 'service_menu', [
+                '{platform_upper}' => mb_strtoupper($platform),
+                '{platform}' => $platform,
+                '{name}' => $greetingName,
+            ]),
+            $this->t($phone, 'btn_choose_service'),
             'Services',
             $rows
         );
@@ -826,11 +875,7 @@ class WebhookController
     private function handleServiceSelection(string $phone, array $session, array $message): void
     {
         if ($message['type'] !== 'selection' || !str_starts_with($message['id'], 'service:')) {
-            $this->whatsapp->sendText(
-                $phone,
-                "⚠️ Tafadhali chagua huduma kutoka kwenye orodha hapo juu 👆\n\n" .
-                "_Tuma \"#\" kurudi mwanzo_"
-            );
+            $this->respondWithAiFallback($phone, $message, $this->t($phone, 'choose_service_reminder'));
 
             return;
         }
@@ -839,7 +884,7 @@ class WebhookController
         $service = Service::find($serviceId);
 
         if ($service === null || $service['status'] !== 'active') {
-            $this->whatsapp->sendText($phone, 'Huduma hii haipatikani tena. Tuma "#" kuanza upya.');
+            $this->whatsapp->sendText($phone, $this->t($phone, 'service_unavailable'));
             Session::reset($phone);
 
             return;
@@ -865,23 +910,21 @@ class WebhookController
             fn (int $qty) => [
                 'id' => 'qty_package:' . $qty,
                 'title' => ($qty >= 1000 ? number_format($qty / 1000, 0) . 'K' : (string) $qty) . ' ' . $unitLabel,
-                'description' => 'Jumla: ' . number_format(($service['my_price'] / 1000) * $qty, 0) . ' TZS',
+                'description' => $this->t($phone, 'qty_total', ['{total}' => number_format(($service['my_price'] / 1000) * $qty, 0)]),
             ],
             $packages
         );
 
         $rows[] = [
             'id' => 'qty_package:custom',
-            'title' => '✏️ Au Andika Kiasi Chako',
-            'description' => "Min: {$service['min_quantity']} | Max: {$service['max_quantity']}",
+            'title' => $this->t($phone, 'qty_custom_title'),
+            'description' => $this->t($phone, 'qty_custom_desc', ['{min}' => $service['min_quantity'], '{max}' => $service['max_quantity']]),
         ];
 
         $this->whatsapp->sendList(
             $phone,
-            "🔢 *CHAGUA KIASI*\n" .
-            "Unataka kuongeza {$service['name']} ngapi?\n\n" .
-            "Chagua kifurushi 👇",
-            'Vifurushi',
+            $this->t($phone, 'qty_menu', ['{service}' => $service['name']]),
+            $this->t($phone, 'btn_packages'),
             'Vifurushi',
             $rows
         );
@@ -890,11 +933,7 @@ class WebhookController
     private function handleQuantityChoice(string $phone, array $session, array $message): void
     {
         if ($message['type'] !== 'selection' || !str_starts_with($message['id'], 'qty_package:')) {
-            $this->whatsapp->sendText(
-                $phone,
-                "⚠️ Tafadhali chagua kifurushi kutoka kwenye orodha hapo juu 👆\n\n" .
-                "_Tuma \"#\" kurudi mwanzo_"
-            );
+            $this->respondWithAiFallback($phone, $message, $this->t($phone, 'qty_package_reminder'));
 
             return;
         }
@@ -906,7 +945,7 @@ class WebhookController
 
             $this->whatsapp->sendText(
                 $phone,
-                "Tafadhali andika idadi (kati ya {$service['min_quantity']} na {$service['max_quantity']}) unayotaka:"
+                $this->t($phone, 'qty_custom_prompt', ['{min}' => $service['min_quantity'], '{max}' => $service['max_quantity']])
             );
 
             Session::updateState($phone, 'AWAITING_QUANTITY', $session['temp_data']);
@@ -918,7 +957,7 @@ class WebhookController
         $service = Service::find($session['temp_data']['service_id']);
 
         if ($service === null) {
-            $this->whatsapp->sendText($phone, 'Hitilafu imetokea. Tuma "#" kuanza upya.');
+            $this->whatsapp->sendText($phone, $this->t($phone, 'generic_error'));
             Session::reset($phone);
 
             return;
@@ -941,7 +980,7 @@ class WebhookController
         $service = Service::find($session['temp_data']['service_id']);
 
         if ($service === null) {
-            $this->whatsapp->sendText($phone, 'Hitilafu imetokea. Tuma "#" kuanza upya.');
+            $this->whatsapp->sendText($phone, $this->t($phone, 'generic_error'));
             Session::reset($phone);
 
             return;
@@ -950,7 +989,7 @@ class WebhookController
         if ($quantity < $service['min_quantity'] || $quantity > $service['max_quantity']) {
             $this->whatsapp->sendText(
                 $phone,
-                "Idadi sio sahihi. Tafadhali andika namba kati ya {$service['min_quantity']} na {$service['max_quantity']}:"
+                $this->t($phone, 'qty_invalid', ['{min}' => $service['min_quantity'], '{max}' => $service['max_quantity']])
             );
 
             return;
@@ -963,69 +1002,37 @@ class WebhookController
 
     private const PROFILE_UNIT_LABELS = ['Followers', 'Subscribers'];
 
-    private const LINK_INSTRUCTIONS = [
+    /**
+     * Language-neutral link metadata (example URL + illustration image) per
+     * platform + type. The step-by-step instructions are translated and pulled
+     * from BotLang by key (link_steps_{platform}_{type}).
+     */
+    private const LINK_META = [
         'Instagram' => [
-            'profile' => [
-                'steps' => "1️⃣ Fungua profile yako ya Instagram\n2️⃣ Bonyeza Share profile\n3️⃣ Chagua Copy link\n4️⃣ Bandika (paste) link hapa chini",
-                'example' => 'https://www.instagram.com/yourname',
-                'image' => 'instagram_profile.jpg',
-            ],
-            'post' => [
-                'steps' => "1️⃣ Fungua post yako ya Instagram\n2️⃣ Bonyeza ikoni ya share (✈️)\n3️⃣ Chagua Copy link\n4️⃣ Bandika (paste) link hapa chini",
-                'example' => 'https://www.instagram.com/p/kuza1234',
-                'image' => 'instagram_post.jpg',
-            ],
+            'profile' => ['example' => 'https://www.instagram.com/yourname', 'image' => 'instagram_profile.jpg'],
+            'post' => ['example' => 'https://www.instagram.com/p/kuza1234', 'image' => 'instagram_post.jpg'],
         ],
         'TikTok' => [
-            'profile' => [
-                'steps' => "1️⃣ Fungua account yako ya TikTok\n2️⃣ Bonyeza ikoni ya share juu\n3️⃣ Chagua Copy link\n4️⃣ Bandika (paste) link hapa chini",
-                'example' => 'https://www.tiktok.com/@yourname',
-                'image' => 'tiktok_profile.jpg',
-            ],
-            'post' => [
-                'steps' => "1️⃣ Fungua post yako ya TikTok\n2️⃣ Bonyeza ikoni ya share (✈️)\n3️⃣ Chagua Copy link\n4️⃣ Bandika (paste) link hapa chini",
-                'example' => 'https://www.tiktok.com/@yourname/video/123456',
-                'image' => 'tiktok_post.jpg',
-            ],
+            'profile' => ['example' => 'https://www.tiktok.com/@yourname', 'image' => 'tiktok_profile.jpg'],
+            'post' => ['example' => 'https://www.tiktok.com/@yourname/video/123456', 'image' => 'tiktok_post.jpg'],
         ],
         'Facebook' => [
-            'profile' => [
-                'steps' => "1️⃣ Fungua Account yako ya Facebook\n2️⃣ Bonyeza vidoti vitatu\n3️⃣ Chagua Copy link\n4️⃣ Bandika (paste) link hapa chini",
-                'example' => 'https://www.facebook.com/yourname',
-                'image' => 'facebook_profile.jpg',
-            ],
-            'post' => [
-                'steps' => "1️⃣ Fungua post yako ya Facebook\n2️⃣ Bonyeza ikoni ya share\n3️⃣ Chagua Copy link\n4️⃣ Bandika (paste) link hapa chini",
-                'example' => 'https://www.facebook.com/share/123456',
-                'image' => 'facebook_post.jpg',
-            ],
+            'profile' => ['example' => 'https://www.facebook.com/yourname', 'image' => 'facebook_profile.jpg'],
+            'post' => ['example' => 'https://www.facebook.com/share/123456', 'image' => 'facebook_post.jpg'],
         ],
         'YouTube' => [
-            'profile' => [
-                'steps' => "1️⃣ Fungua profile yako ya YouTube\n2️⃣ Bonyeza Share profile\n3️⃣ Chagua Copy link\n4️⃣ Bandika (paste) link hapa chini",
-                'example' => 'https://www.youtube.com/@yourchannel',
-                'image' => 'youtube_profile.jpg',
-            ],
-            'post' => [
-                'steps' => "1️⃣ Fungua post yako ya YouTube\n2️⃣ Bonyeza ikoni ya share (✈️)\n3️⃣ Chagua Copy link\n4️⃣ Bandika (paste) link hapa chini",
-                'example' => 'https://www.youtube.com/watch?v=abc123',
-                'image' => 'youtube_post.jpg',
-            ],
+            'profile' => ['example' => 'https://www.youtube.com/@yourchannel', 'image' => 'youtube_profile.jpg'],
+            'post' => ['example' => 'https://www.youtube.com/watch?v=abc123', 'image' => 'youtube_post.jpg'],
         ],
     ];
 
-    private function getLinkInstructions(string $platform, string $unitLabel): array
+    private function getLinkInstructions(string $phone, string $platform, string $unitLabel): array
     {
+        $lang = $this->langFor($phone);
         $type = in_array($unitLabel, self::PROFILE_UNIT_LABELS, true) ? 'profile' : 'post';
 
-        $default = [
-            'steps' => "1️⃣ Fungua akaunti/post yako ya {$platform}\n2️⃣ Bonyeza ikoni ya share\n3️⃣ Chagua Copy link\n4️⃣ Bandika (paste) link hapa chini",
-            'example' => 'https://example.com/yourname',
-            'image' => null,
-        ];
-
         $platformKey = null;
-        foreach (array_keys(self::LINK_INSTRUCTIONS) as $knownPlatform) {
+        foreach (array_keys(self::LINK_META) as $knownPlatform) {
             if (strcasecmp($knownPlatform, $platform) === 0) {
                 $platformKey = $knownPlatform;
                 break;
@@ -1033,19 +1040,29 @@ class WebhookController
         }
 
         if ($platformKey === null) {
-            return $default;
+            return [
+                'steps' => BotLang::get($lang, 'link_steps_generic', ['{platform}' => $platform]),
+                'example' => 'https://example.com/yourname',
+                'image' => null,
+            ];
         }
 
-        return self::LINK_INSTRUCTIONS[$platformKey][$type] ?? $default;
+        $meta = self::LINK_META[$platformKey][$type];
+
+        return [
+            'steps' => BotLang::get($lang, 'link_steps_' . strtolower($platformKey) . '_' . $type),
+            'example' => $meta['example'],
+            'image' => $meta['image'],
+        ];
     }
 
     private function sendLinkRequest(string $phone, array $service, int $quantity): void
     {
         $customer = Customer::getOrCreate($phone);
-        $name = $customer['name'] ?? 'Mteja';
+        $name = $customer['name'] ?? $this->t($phone, 'default_customer_name');
         $qtyLabel = ($quantity >= 1000 ? number_format($quantity / 1000, 0) . 'K' : (string) $quantity) . ' ' . $service['unit_label'];
 
-        $instructions = $this->getLinkInstructions($service['platform'], $service['unit_label']);
+        $instructions = $this->getLinkInstructions($phone, $service['platform'], $service['unit_label']);
         $steps = !empty($service['link_instructions']) ? $service['link_instructions'] : $instructions['steps'];
 
         $imageUrl = !empty($service['link_instructions_image'])
@@ -1056,13 +1073,13 @@ class WebhookController
 
         $hasImage = $imageUrl !== null;
 
-        $message =
-            "🔗 *TUMA LINK YAKO*\n\n" .
-            "Habari {$name}, unaagiza {$qtyLabel}.\n\n" .
-            ($hasImage ? "👉 Angalia picha hapo juu kuona format sahihi.\n\n" : '') .
-            "📱 Hatua:\n{$steps}\n\n" .
-            "📌 Mfano: {$instructions['example']}\n\n" .
-            "Tuma \"#\" kurudi menu kuu.";
+        $message = $this->t($phone, 'link_request', [
+            '{name}' => $name,
+            '{qty}' => $qtyLabel,
+            '{image_note}' => $hasImage ? $this->t($phone, 'link_see_image') : '',
+            '{steps}' => $steps,
+            '{example}' => $instructions['example'],
+        ]);
 
         if ($hasImage) {
             $this->whatsapp->sendImage($phone, $imageUrl, $message);
@@ -1076,13 +1093,7 @@ class WebhookController
         $link = trim($message['text'] ?? '');
 
         if (!filter_var($link, FILTER_VALIDATE_URL)) {
-            $this->whatsapp->sendText(
-                $phone,
-                "⚠️ Link uliyotuma sio sahihi.\n\n" .
-                "Tafadhali tuma link kamili inayoanza na http:// au https://\n" .
-                "📌 Mfano: https://instagram.com/jinaako\n\n" .
-                "_Tuma \"#\" kurudi mwanzo_"
-            );
+            $this->whatsapp->sendText($phone, $this->t($phone, 'link_invalid'));
 
             return;
         }
@@ -1099,17 +1110,16 @@ class WebhookController
 
         $this->whatsapp->sendButtons(
             $phone,
-            "✅ *UTHIBITISHO WA MWISHO*\n" .
-            "Tafadhali hakiki maelezo ya oda yako:\n\n" .
-            "📡 Mtandao: {$tempData['platform']}\n" .
-            "🎯 Huduma: {$service['name']}\n" .
-            "🔗 Link: {$link}\n" .
-            "🔢 Kiasi: {$quantity}\n\n" .
-            "💰 Gharama: " . number_format($amount, 0) . " TZS\n\n" .
-            "Je, tuendelee na oda hii?",
+            $this->t($phone, 'order_confirm', [
+                '{platform}' => $tempData['platform'],
+                '{service}' => $service['name'],
+                '{link}' => $link,
+                '{qty}' => $quantity,
+                '{amount}' => number_format($amount, 0),
+            ]),
             [
-                ['id' => 'order_confirm:yes', 'title' => 'Ndio, Endelea 🚀'],
-                ['id' => 'order_confirm:no', 'title' => 'Hapana, Sitisha ❌'],
+                ['id' => 'order_confirm:yes', 'title' => $this->t($phone, 'btn_yes_continue')],
+                ['id' => 'order_confirm:no', 'title' => $this->t($phone, 'btn_no_cancel')],
             ]
         );
 
@@ -1119,11 +1129,7 @@ class WebhookController
     private function handleOrderConfirm(string $phone, array $session, array $message): void
     {
         if ($message['type'] !== 'selection' || !str_starts_with($message['id'], 'order_confirm:')) {
-            $this->whatsapp->sendText(
-                $phone,
-                "⚠️ Tafadhali bonyeza moja ya vitufe hapo juu 👆\n\n" .
-                "_Tuma \"#\" kurudi mwanzo_"
-            );
+            $this->respondWithAiFallback($phone, $message, $this->t($phone, 'press_button_reminder'));
 
             return;
         }
@@ -1131,7 +1137,7 @@ class WebhookController
         $choice = substr($message['id'], strlen('order_confirm:'));
 
         if ($choice === 'no') {
-            $this->whatsapp->sendText($phone, 'Oda imesitishwa. Tuma "#" kuanza upya.');
+            $this->whatsapp->sendText($phone, $this->t($phone, 'order_cancelled'));
             Session::reset($phone);
 
             return;
@@ -1150,13 +1156,10 @@ class WebhookController
 
         $this->whatsapp->sendButtons(
             $phone,
-            "⚠️ *SALIO DOGO*\n" .
-            "Salio Halitoshi\n\n" .
-            "Unahitaji ziada ya: " . number_format($shortfall, 0) . " TZS\n\n" .
-            "Je, unataka kulipa sasa ili kukamilisha oda?",
+            $this->t($phone, 'low_balance', ['{shortfall}' => number_format($shortfall, 0)]),
             [
-                ['id' => 'topup_decision:yes', 'title' => 'Ndio, Lipa Sasa 💳'],
-                ['id' => 'topup_decision:no', 'title' => 'Hapana, Sitisha'],
+                ['id' => 'topup_decision:yes', 'title' => $this->t($phone, 'btn_yes_pay')],
+                ['id' => 'topup_decision:no', 'title' => $this->t($phone, 'btn_no_cancel_plain')],
             ]
         );
 
@@ -1166,7 +1169,7 @@ class WebhookController
     private function completeOrderFromWallet(string $phone, array $customer, array $data): void
     {
         if (!Customer::debit((int) $customer['id'], (float) $data['amount'])) {
-            $this->whatsapp->sendText($phone, 'Samahani, hitilafu imetokea wakati wa kutumia salio. Tuma "#" kuanza upya.');
+            $this->whatsapp->sendText($phone, $this->t($phone, 'wallet_debit_error'));
             Session::reset($phone);
 
             return;
@@ -1190,31 +1193,25 @@ class WebhookController
         }
 
         $providerOrderLine = !empty($order['provider_order_id'])
-            ? "🔢 Kuzapanel #{$order['provider_order_id']}\n"
+            ? $this->t($phone, 'order_provider_line', ['{provider}' => $order['provider_order_id']])
             : '';
 
         $this->whatsapp->sendText(
             $phone,
-            "🎉 *Oda Imepokelewa Kikamilifu!*\n\n" .
-            "🆔 Namba: #{$orderId}\n" .
-            $providerOrderLine .
-            "⏳ Tumeanza kuifanyia kazi mara moja! 🚀\n\n" .
-            "Unaweza kuifuatilia kwa kutumia kitufe cha 'Fuatilia Oda' kwenye menu kuu.\n\n" .
-            "_Tuma # kurudi menu kuu_"
+            $this->t($phone, 'order_received', [
+                '{id}' => $orderId,
+                '{provider_line}' => $providerOrderLine,
+            ])
         );
 
         Session::reset($phone);
-        MainMenu::send($this->whatsapp, $phone, $customer['name'] ?? null);
+        MainMenu::send($this->whatsapp, $phone, $customer['name'] ?? null, $this->langFor($phone));
     }
 
     private function handleTopupDecision(string $phone, array $session, array $message): void
     {
         if ($message['type'] !== 'selection' || !str_starts_with($message['id'], 'topup_decision:')) {
-            $this->whatsapp->sendText(
-                $phone,
-                "⚠️ Tafadhali bonyeza moja ya vitufe hapo juu 👆\n\n" .
-                "_Tuma \"#\" kurudi mwanzo_"
-            );
+            $this->respondWithAiFallback($phone, $message, $this->t($phone, 'press_button_reminder'));
 
             return;
         }
@@ -1222,7 +1219,7 @@ class WebhookController
         $choice = substr($message['id'], strlen('topup_decision:'));
 
         if ($choice === 'no') {
-            $this->whatsapp->sendText($phone, 'Oda imesitishwa. Tuma "#" kuanza upya.');
+            $this->whatsapp->sendText($phone, $this->t($phone, 'order_cancelled'));
             Session::reset($phone);
 
             return;

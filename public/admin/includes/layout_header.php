@@ -1,9 +1,22 @@
 <?php
 /** @var string $pageTitle */
 /** @var string $activeNav */
+
+require_once __DIR__ . '/../../../app/helpers/Lang.php';
+
+if (isset($_GET['lang'])) {
+    Lang::setLocale($_GET['lang']);
+    $redirectQuery = $_GET;
+    unset($redirectQuery['lang']);
+    $redirectUrl = basename($_SERVER['PHP_SELF']) . (($redirectQuery !== []) ? ('?' . http_build_query($redirectQuery)) : '');
+    header('Location: ' . $redirectUrl);
+    exit;
+}
+
+Lang::load();
 ?>
 <!DOCTYPE html>
-<html lang="sw">
+<html lang="<?= Lang::current() ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -158,6 +171,12 @@
         .topbar .left-group { display: flex; align-items: center; gap: 14px; min-width: 0; }
         .topbar h2 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .topbar .user { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--text-soft); }
+        .topbar .lang-switch { display: flex; gap: 2px; background: #f1f2f8; border-radius: 8px; padding: 3px; }
+        .topbar .lang-switch a {
+            padding: 4px 9px; border-radius: 6px; font-size: 12px; font-weight: 600;
+            text-decoration: none; color: var(--text-soft);
+        }
+        .topbar .lang-switch a.active { background: var(--card); color: var(--text); box-shadow: 0 1px 2px rgba(15,23,42,0.08); }
         .topbar .user .avatar {
             width: 34px; height: 34px; border-radius: 50%;
             background: var(--primary-soft); color: var(--primary);
@@ -327,15 +346,15 @@
             </div>
         </div>
         <nav>
-            <a href="index.php" class="<?= $activeNav === 'dashboard' ? 'active' : '' ?>"><i class="fa-solid fa-gauge"></i> Dashboard</a>
-            <a href="orders.php" class="<?= $activeNav === 'orders' ? 'active' : '' ?>"><i class="fa-solid fa-receipt"></i> Orders</a>
-            <a href="customers.php" class="<?= $activeNav === 'customers' ? 'active' : '' ?>"><i class="fa-solid fa-users"></i> Customers</a>
-            <a href="inbox.php" class="<?= $activeNav === 'inbox' ? 'active' : '' ?>"><i class="fa-solid fa-comments"></i> Inbox</a>
-            <a href="broadcast.php" class="<?= $activeNav === 'broadcast' ? 'active' : '' ?>"><i class="fa-solid fa-bullhorn"></i> Matangazo</a>
-            <a href="reports.php" class="<?= $activeNav === 'reports' ? 'active' : '' ?>"><i class="fa-solid fa-chart-line"></i> Ripoti ya Mauzo</a>
-            <a href="providers.php" class="<?= $activeNav === 'providers' ? 'active' : '' ?>"><i class="fa-solid fa-server"></i> Providers</a>
-            <a href="services.php" class="<?= $activeNav === 'services' ? 'active' : '' ?>"><i class="fa-solid fa-layer-group"></i> Services</a>
-            <a href="settings.php" class="<?= $activeNav === 'settings' ? 'active' : '' ?>"><i class="fa-solid fa-gear"></i> Mipangilio ya Malipo</a>
+            <a href="index.php" class="<?= $activeNav === 'dashboard' ? 'active' : '' ?>"><i class="fa-solid fa-gauge"></i> <?= t('nav.dashboard') ?></a>
+            <a href="orders.php" class="<?= $activeNav === 'orders' ? 'active' : '' ?>"><i class="fa-solid fa-receipt"></i> <?= t('nav.orders') ?></a>
+            <a href="customers.php" class="<?= $activeNav === 'customers' ? 'active' : '' ?>"><i class="fa-solid fa-users"></i> <?= t('nav.customers') ?></a>
+            <a href="inbox.php" class="<?= $activeNav === 'inbox' ? 'active' : '' ?>"><i class="fa-solid fa-comments"></i> <?= t('nav.inbox') ?></a>
+            <a href="broadcast.php" class="<?= $activeNav === 'broadcast' ? 'active' : '' ?>"><i class="fa-solid fa-bullhorn"></i> <?= t('nav.broadcast') ?></a>
+            <a href="reports.php" class="<?= $activeNav === 'reports' ? 'active' : '' ?>"><i class="fa-solid fa-chart-line"></i> <?= t('nav.reports') ?></a>
+            <a href="providers.php" class="<?= $activeNav === 'providers' ? 'active' : '' ?>"><i class="fa-solid fa-server"></i> <?= t('nav.providers') ?></a>
+            <a href="services.php" class="<?= $activeNav === 'services' ? 'active' : '' ?>"><i class="fa-solid fa-layer-group"></i> <?= t('nav.services') ?></a>
+            <a href="settings.php" class="<?= $activeNav === 'settings' ? 'active' : '' ?>"><i class="fa-solid fa-gear"></i> <?= t('nav.settings') ?></a>
         </nav>
         <div class="sidebar-footer">&copy; <?= date('Y') ?> KuzaPanel</div>
     </div>
@@ -346,8 +365,12 @@
                 <h2><?= htmlspecialchars($pageTitle) ?></h2>
             </div>
             <div class="user">
+                <div class="lang-switch">
+                    <a href="?<?= htmlspecialchars(http_build_query(array_merge($_GET, ['lang' => 'sw']))) ?>" class="<?= Lang::current() === 'sw' ? 'active' : '' ?>">🇹🇿 SW</a>
+                    <a href="?<?= htmlspecialchars(http_build_query(array_merge($_GET, ['lang' => 'en']))) ?>" class="<?= Lang::current() === 'en' ? 'active' : '' ?>">🇬🇧 EN</a>
+                </div>
                 <div class="avatar"><?= htmlspecialchars(substr(Auth::user()['username'], 0, 1)) ?></div>
                 <span class="uname"><?= htmlspecialchars(Auth::user()['username']) ?></span>
-                <a class="logout" href="logout.php"><i class="fa-solid fa-arrow-right-from-bracket"></i> Logout</a>
+                <a class="logout" href="logout.php"><i class="fa-solid fa-arrow-right-from-bracket"></i> <?= t('nav.logout') ?></a>
             </div>
         </div>

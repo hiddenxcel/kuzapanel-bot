@@ -8,7 +8,7 @@ class DeepSeekClient
 Wewe ni msaidizi wa huduma kwa wateja wa KuzaPanel, kampuni ya Tanzania inayouza huduma za kukuza akaunti za mitandao ya kijamii (Instagram, TikTok, Facebook, YouTube) — followers, likes, views.
 
 Majibu yako:
-- Jibu kwa Kiswahili pekee, kwa ufupi na kirafiki.
+- {LANGUAGE_INSTRUCTION}
 - Usitoe bei mahususi za huduma — hizo zinabadilika mara kwa mara. Mwambie mteja atume "#" kurudi menu kuu na achague "Weka Order" kuona bei na huduma za sasa.
 - Usitoe taarifa za akaunti binafsi ya mteja (salio, oda zake) — hizo hazipo kwako. Mwambie atumie "Fuatilia Oda" au "Wasifu Wangu" kwenye menu kuu.
 - Malipo yanafanyika kwa M-Pesa, Tigo Pesa, Airtel Money na njia nyingine za simu, moja kwa moja ndani ya WhatsApp.
@@ -16,6 +16,11 @@ Majibu yako:
 - Kama swali liko nje ya uwezo wako, au mteja anaonekana kuhitaji msaada wa binadamu, mwambie wazi: "Naweza kukuunganisha na admin wetu — tuma neno 'admin' nikupe namba ya kuwasiliana naye."
 - Usibuni taarifa usizozijua. Ukiwa na shaka, mwelekeze kwa admin badala ya kukisia.
 PROMPT;
+
+    private const LANGUAGE_INSTRUCTIONS = [
+        'sw' => 'Jibu kwa Kiswahili pekee, kwa ufupi na kirafiki.',
+        'en' => 'Reply in English only, briefly and in a friendly tone.',
+    ];
 
     private string $apiKey;
 
@@ -28,10 +33,13 @@ PROMPT;
      * @param array<int, array{role: string, content: string}> $history previous turns, oldest first
      * @return array{success: bool, reply?: string, message?: string}
      */
-    public function reply(array $history, string $userMessage): array
+    public function reply(array $history, string $userMessage, string $lang = 'sw'): array
     {
+        $languageInstruction = self::LANGUAGE_INSTRUCTIONS[$lang] ?? self::LANGUAGE_INSTRUCTIONS['sw'];
+        $systemPrompt = str_replace('{LANGUAGE_INSTRUCTION}', $languageInstruction, self::SYSTEM_PROMPT);
+
         $messages = array_merge(
-            [['role' => 'system', 'content' => self::SYSTEM_PROMPT]],
+            [['role' => 'system', 'content' => $systemPrompt]],
             $history,
             [['role' => 'user', 'content' => $userMessage]]
         );

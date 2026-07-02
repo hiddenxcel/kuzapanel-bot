@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../app/helpers/Auth.php';
+require_once __DIR__ . '/../../app/helpers/Lang.php';
 require_once __DIR__ . '/../../app/models/Order.php';
 require_once __DIR__ . '/../../app/models/Payment.php';
 
@@ -20,7 +21,7 @@ $depositsToday = Payment::depositsForDate($today);
 
 $topCustomers = Order::topCustomers(5);
 
-$pageTitle = 'Ripoti ya Mauzo';
+$pageTitle = t('reports.title');
 $activeNav = 'reports';
 require __DIR__ . '/includes/layout_header.php';
 
@@ -32,50 +33,50 @@ function fmt(float $n): string
 
 <div class="stat-grid">
     <div class="stat-card">
-        <div class="label">Mauzo Leo</div>
+        <div class="label"><?= t('reports.sales_today') ?></div>
         <div class="value"><?= number_format($todayStats['revenue'], 0) ?></div>
-        <div class="label">Faida: <?= fmt($todayStats['profit']) ?></div>
+        <div class="label"><?= t('reports.profit') ?> <?= fmt($todayStats['profit']) ?></div>
     </div>
     <div class="stat-card">
-        <div class="label">Mauzo Jana</div>
+        <div class="label"><?= t('reports.sales_yesterday') ?></div>
         <div class="value"><?= number_format($yesterdayStats['revenue'], 0) ?></div>
-        <div class="label">Faida: <?= fmt($yesterdayStats['profit']) ?></div>
+        <div class="label"><?= t('reports.profit') ?> <?= fmt($yesterdayStats['profit']) ?></div>
     </div>
     <div class="stat-card">
-        <div class="label">Mauzo Wiki (siku 7)</div>
+        <div class="label"><?= t('reports.sales_week') ?></div>
         <div class="value"><?= number_format($weekStats['revenue'], 0) ?></div>
-        <div class="label">Faida: <?= fmt($weekStats['profit']) ?></div>
+        <div class="label"><?= t('reports.profit') ?> <?= fmt($weekStats['profit']) ?></div>
     </div>
     <div class="stat-card">
-        <div class="label">Mauzo Mwezi</div>
+        <div class="label"><?= t('reports.sales_month') ?></div>
         <div class="value"><?= number_format($monthStats['revenue'], 0) ?></div>
-        <div class="label">Faida: <?= fmt($monthStats['profit']) ?></div>
+        <div class="label"><?= t('reports.profit') ?> <?= fmt($monthStats['profit']) ?></div>
     </div>
 </div>
 
 <div class="card">
-    <h3 style="margin-top:0;">Muhtasari wa Orders (zilizolipiwa)</h3>
+    <h3 style="margin-top:0;"><?= t('reports.orders_summary') ?></h3>
     <table>
-        <tr><th>Kipindi</th><th>Orders</th><th>Mauzo</th><th>Faida</th></tr>
-        <tr><td>Leo</td><td><?= $todayStats['orders_count'] ?></td><td><?= fmt($todayStats['revenue']) ?></td><td><?= fmt($todayStats['profit']) ?></td></tr>
-        <tr><td>Jana</td><td><?= $yesterdayStats['orders_count'] ?></td><td><?= fmt($yesterdayStats['revenue']) ?></td><td><?= fmt($yesterdayStats['profit']) ?></td></tr>
-        <tr><td>Wiki (siku 7)</td><td><?= $weekStats['orders_count'] ?></td><td><?= fmt($weekStats['revenue']) ?></td><td><?= fmt($weekStats['profit']) ?></td></tr>
-        <tr><td>Mwezi huu</td><td><?= $monthStats['orders_count'] ?></td><td><?= fmt($monthStats['revenue']) ?></td><td><?= fmt($monthStats['profit']) ?></td></tr>
+        <tr><th><?= t('reports.col_period') ?></th><th><?= t('reports.col_orders') ?></th><th><?= t('reports.col_sales') ?></th><th><?= t('reports.col_profit') ?></th></tr>
+        <tr><td><?= t('reports.today') ?></td><td><?= $todayStats['orders_count'] ?></td><td><?= fmt($todayStats['revenue']) ?></td><td><?= fmt($todayStats['profit']) ?></td></tr>
+        <tr><td><?= t('reports.yesterday') ?></td><td><?= $yesterdayStats['orders_count'] ?></td><td><?= fmt($yesterdayStats['revenue']) ?></td><td><?= fmt($yesterdayStats['profit']) ?></td></tr>
+        <tr><td><?= t('reports.this_week') ?></td><td><?= $weekStats['orders_count'] ?></td><td><?= fmt($weekStats['revenue']) ?></td><td><?= fmt($weekStats['profit']) ?></td></tr>
+        <tr><td><?= t('reports.this_month') ?></td><td><?= $monthStats['orders_count'] ?></td><td><?= fmt($monthStats['revenue']) ?></td><td><?= fmt($monthStats['profit']) ?></td></tr>
     </table>
 </div>
 
 <div class="card">
-    <h3 style="margin-top:0;">Deposits Leo</h3>
+    <h3 style="margin-top:0;"><?= t('reports.deposits_today') ?></h3>
     <table>
-        <tr><td>Idadi ya deposits</td><td><?= $depositsToday['count'] ?></td></tr>
-        <tr><td>Jumla ya deposits</td><td><?= fmt($depositsToday['total']) ?></td></tr>
+        <tr><td><?= t('reports.deposits_count') ?></td><td><?= $depositsToday['count'] ?></td></tr>
+        <tr><td><?= t('reports.deposits_total') ?></td><td><?= fmt($depositsToday['total']) ?></td></tr>
     </table>
 </div>
 
 <div class="card">
-    <h3 style="margin-top:0;">Wateja Bora (kwa matumizi)</h3>
+    <h3 style="margin-top:0;"><?= t('reports.top_customers') ?></h3>
     <table>
-        <tr><th>#</th><th>Jina</th><th>Namba</th><th>Jumla Ametumia</th></tr>
+        <tr><th><?= t('reports.col_rank') ?></th><th><?= t('reports.col_name') ?></th><th><?= t('reports.col_phone') ?></th><th><?= t('reports.col_total_spent') ?></th></tr>
         <?php foreach ($topCustomers as $i => $c): ?>
         <tr>
             <td><?= $i + 1 ?></td>
@@ -85,7 +86,7 @@ function fmt(float $n): string
         </tr>
         <?php endforeach; ?>
         <?php if ($topCustomers === []): ?>
-        <tr><td colspan="4">Hakuna data bado.</td></tr>
+        <tr><td colspan="4"><?= t('reports.no_data') ?></td></tr>
         <?php endif; ?>
     </table>
 </div>

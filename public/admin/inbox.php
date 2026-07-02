@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../app/helpers/Auth.php';
+require_once __DIR__ . '/../../app/helpers/Lang.php';
 require_once __DIR__ . '/../../app/models/Message.php';
 require_once __DIR__ . '/../../app/models/Customer.php';
 
@@ -17,7 +18,7 @@ if ($activePhone !== '') {
     $thread = Message::byCustomer($activePhone);
 }
 
-$pageTitle = 'Inbox';
+$pageTitle = t('inbox.title');
 $activeNav = 'inbox';
 require __DIR__ . '/includes/layout_header.php';
 ?>
@@ -54,7 +55,7 @@ require __DIR__ . '/includes/layout_header.php';
 <div class="inbox-wrap">
     <div class="inbox-list">
         <?php if ($customers === []): ?>
-            <div class="il-empty">Hakuna mazungumzo bado.</div>
+            <div class="il-empty"><?= t('inbox.no_conversations') ?></div>
         <?php endif; ?>
         <?php foreach ($customers as $c): ?>
             <a href="inbox.php?phone=<?= urlencode($c['customer_phone']) ?>" class="<?= $c['customer_phone'] === $activePhone ? 'active' : '' ?>">
@@ -73,7 +74,7 @@ require __DIR__ . '/includes/layout_header.php';
             </div>
             <div class="inbox-thread-body">
                 <?php if ($thread === []): ?>
-                    <div class="inbox-thread-empty">Hakuna ujumbe bado kwa mteja huyu.</div>
+                    <div class="inbox-thread-empty"><?= t('inbox.no_messages') ?></div>
                 <?php endif; ?>
                 <?php foreach ($thread as $m): ?>
                     <div class="msg-bubble <?= $m['direction'] ?>">
@@ -83,7 +84,7 @@ require __DIR__ . '/includes/layout_header.php';
                 <?php endforeach; ?>
             </div>
         <?php else: ?>
-            <div class="inbox-thread-empty">Chagua mteja upande wa kushoto kuona mazungumzo.</div>
+            <div class="inbox-thread-empty"><?= t('inbox.select_customer') ?></div>
         <?php endif; ?>
     </div>
 </div>

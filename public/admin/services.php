@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../app/helpers/Auth.php';
+require_once __DIR__ . '/../../app/helpers/Lang.php';
 require_once __DIR__ . '/../../app/models/Service.php';
 require_once __DIR__ . '/../../app/models/Provider.php';
 
@@ -38,17 +39,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             || $data['platform'] === '' || $data['name'] === '' || $data['unit_label'] === ''
             || $data['cost_price'] === '' || $data['my_price'] === ''
         ) {
-            $error = 'Tafadhali jaza taarifa zote.';
+            $error = t('services.fill_all');
         } elseif ($action === 'create') {
             Service::create($data);
-            $success = 'Service imeongezwa.';
+            $success = t('services.added');
         } else {
             Service::update((int) $_POST['id'], $data);
-            $success = 'Service imesasishwa.';
+            $success = t('services.updated');
         }
     } elseif ($action === 'delete') {
         Service::delete((int) $_POST['id']);
-        $success = 'Service imefutwa.';
+        $success = t('services.deleted');
     } elseif ($action === 'move_up') {
         Service::moveUp((int) $_POST['id']);
     } elseif ($action === 'move_down') {
@@ -69,7 +70,7 @@ foreach ($providers as $p) {
     $providerNames[$p['id']] = $p['name'];
 }
 
-$pageTitle = 'Services';
+$pageTitle = t('services.title');
 $activeNav = 'services';
 require __DIR__ . '/includes/layout_header.php';
 ?>
@@ -82,9 +83,9 @@ require __DIR__ . '/includes/layout_header.php';
 <?php endif; ?>
 
 <div class="card">
-    <h3 style="margin-top:0;"><?= $editing ? 'Hariri Service' : 'Ongeza Service Mpya' ?></h3>
+    <h3 style="margin-top:0;"><?= $editing ? t('services.edit_title') : t('services.add_title') ?></h3>
     <?php if ($providers === []): ?>
-        <p>Tafadhali <a href="providers.php">ongeza provider</a> kwanza kabla ya kuongeza service.</p>
+        <p><?= t('services.add_provider_first') ?> <a href="providers.php"><?= t('services.add_provider_link') ?></a> <?= t('services.add_provider_suffix') ?></p>
     <?php else: ?>
     <form method="post">
         <input type="hidden" name="action" value="<?= $editing ? 'update' : 'create' ?>">
@@ -92,9 +93,9 @@ require __DIR__ . '/includes/layout_header.php';
             <input type="hidden" name="id" value="<?= $editing['id'] ?>">
         <?php endif; ?>
         <div class="form-group">
-            <label>Provider</label>
+            <label><?= t('services.provider') ?></label>
             <select name="provider_id" required>
-                <option value="">-- Chagua Provider --</option>
+                <option value=""><?= t('services.choose_provider') ?></option>
                 <?php foreach ($providers as $p): ?>
                     <option value="<?= $p['id'] ?>" <?= ($editing['provider_id'] ?? null) == $p['id'] ? 'selected' : '' ?>>
                         <?= htmlspecialchars($p['name']) ?>
@@ -103,15 +104,15 @@ require __DIR__ . '/includes/layout_header.php';
             </select>
         </div>
         <div class="form-group">
-            <label>Provider Service ID</label>
+            <label><?= t('services.provider_service_id') ?></label>
             <input type="text" name="provider_service_id" value="<?= htmlspecialchars($editing['provider_service_id'] ?? '') ?>" required>
         </div>
         <div class="form-group">
-            <label>Platform (mfano: Instagram, TikTok)</label>
+            <label><?= t('services.platform') ?></label>
             <input type="text" name="platform" value="<?= htmlspecialchars($editing['platform'] ?? '') ?>" required>
         </div>
         <div class="form-group">
-            <label>Jina la Service</label>
+            <label><?= t('services.name') ?></label>
             <input type="text" name="name" value="<?= htmlspecialchars($editing['name'] ?? '') ?>" required>
         </div>
         <?php
@@ -125,65 +126,65 @@ require __DIR__ . '/includes/layout_header.php';
             $isCustomUnit = !in_array($currentUnit, $unitOptions, true);
         ?>
         <div class="form-group">
-            <label>Unit Label (mfano: Followers, Likes, Views)</label>
+            <label><?= t('services.unit_label') ?></label>
             <select name="unit_label" id="unit_label_select" onchange="document.getElementById('unit_label_custom_wrap').style.display = this.value === 'custom' ? 'block' : 'none';">
                 <?php foreach ($unitOptions as $opt): ?>
                     <option value="<?= $opt ?>" <?= $currentUnit === $opt ? 'selected' : '' ?>><?= $opt ?></option>
                 <?php endforeach; ?>
-                <option value="custom" <?= $isCustomUnit ? 'selected' : '' ?>>Nyingine...</option>
+                <option value="custom" <?= $isCustomUnit ? 'selected' : '' ?>><?= t('services.unit_other') ?></option>
             </select>
         </div>
         <div class="form-group" id="unit_label_custom_wrap" style="<?= $isCustomUnit ? '' : 'display:none;' ?>">
-            <label>Unit Label Maalum</label>
+            <label><?= t('services.unit_label_custom') ?></label>
             <input type="text" name="unit_label_custom" value="<?= $isCustomUnit ? htmlspecialchars($currentUnit) : '' ?>">
         </div>
         <div class="form-group">
-            <label>Cost Price (kwa kila 1000)</label>
+            <label><?= t('services.cost_price') ?></label>
             <input type="number" step="0.0001" name="cost_price" value="<?= htmlspecialchars($editing['cost_price'] ?? '') ?>" required>
         </div>
         <div class="form-group">
-            <label>My Price (kwa kila 1000)</label>
+            <label><?= t('services.my_price') ?></label>
             <input type="number" step="0.0001" name="my_price" value="<?= htmlspecialchars($editing['my_price'] ?? '') ?>" required>
         </div>
         <div class="form-group">
-            <label>Min Quantity</label>
+            <label><?= t('services.min_quantity') ?></label>
             <input type="number" name="min_quantity" value="<?= htmlspecialchars($editing['min_quantity'] ?? '1') ?>" required>
         </div>
         <div class="form-group">
-            <label>Max Quantity</label>
+            <label><?= t('services.max_quantity') ?></label>
             <input type="number" name="max_quantity" value="<?= htmlspecialchars($editing['max_quantity'] ?? '1') ?>" required>
         </div>
         <div class="form-group">
-            <label>Maelekezo Maalum (hiari — kwa default, mfumo unatumia maelekezo ya kawaida kulingana na Platform + Unit Label)</label>
-            <textarea name="link_instructions" rows="6" placeholder="Acha tupu kutumia maelekezo ya default ya Platform/Unit Label"><?= htmlspecialchars($editing['link_instructions'] ?? '') ?></textarea>
+            <label><?= t('services.link_instructions') ?></label>
+            <textarea name="link_instructions" rows="6" placeholder="<?= t('services.link_instructions_placeholder') ?>"><?= htmlspecialchars($editing['link_instructions'] ?? '') ?></textarea>
         </div>
         <div class="form-group">
-            <label>Picha Maalum (hiari — URL ya moja kwa moja ya picha, mfano ikiisha na .jpg)</label>
-            <input type="text" name="link_instructions_image" value="<?= htmlspecialchars($editing['link_instructions_image'] ?? '') ?>" placeholder="Acha tupu kutumia picha ya default">
+            <label><?= t('services.link_image') ?></label>
+            <input type="text" name="link_instructions_image" value="<?= htmlspecialchars($editing['link_instructions_image'] ?? '') ?>" placeholder="<?= t('services.link_image_placeholder') ?>">
         </div>
         <div class="form-group">
-            <label>Status</label>
+            <label><?= t('services.status') ?></label>
             <select name="status">
-                <option value="active" <?= ($editing['status'] ?? 'active') === 'active' ? 'selected' : '' ?>>Active</option>
-                <option value="inactive" <?= ($editing['status'] ?? '') === 'inactive' ? 'selected' : '' ?>>Inactive</option>
+                <option value="active" <?= ($editing['status'] ?? 'active') === 'active' ? 'selected' : '' ?>><?= t('providers.active') ?></option>
+                <option value="inactive" <?= ($editing['status'] ?? '') === 'inactive' ? 'selected' : '' ?>><?= t('providers.inactive') ?></option>
             </select>
         </div>
-        <button type="submit" class="btn btn-primary"><?= $editing ? 'Sasisha' : 'Ongeza' ?></button>
+        <button type="submit" class="btn btn-primary"><?= $editing ? t('services.update') : t('services.add') ?></button>
         <?php if ($editing): ?>
-            <a href="services.php" class="btn btn-secondary">Ghairi</a>
+            <a href="services.php" class="btn btn-secondary"><?= t('services.cancel') ?></a>
         <?php endif; ?>
     </form>
     <?php endif; ?>
 </div>
 
 <div class="card">
-    <h3 style="margin-top:0;">Orodha ya Services</h3>
+    <h3 style="margin-top:0;"><?= t('services.list_title') ?></h3>
     <p style="margin-top:-10px;color:var(--text-soft);font-size:13px;">
-        Tumia vitufe <i class="fa-solid fa-arrow-up"></i> / <i class="fa-solid fa-arrow-down"></i> kupanga mpangilio wa services ndani ya kila platform — mpangilio huu ndio utakaoonekana kwa wateja kwenye WhatsApp.
+        <?= t('services.reorder_hint') ?>
     </p>
     <table>
         <tr>
-            <th>Pangilio</th><th>ID</th><th>Provider</th><th>Platform</th><th>Jina</th><th>Unit</th><th>Bei</th><th>Min/Max</th><th>Status</th><th>Action</th>
+            <th><?= t('services.col_order') ?></th><th><?= t('services.col_id') ?></th><th><?= t('services.col_provider') ?></th><th><?= t('services.col_platform') ?></th><th><?= t('services.col_name') ?></th><th><?= t('services.col_unit') ?></th><th><?= t('services.col_price') ?></th><th><?= t('services.col_minmax') ?></th><th><?= t('services.col_status') ?></th><th><?= t('services.col_action') ?></th>
         </tr>
         <?php $count = count($services); ?>
         <?php for ($i = 0; $i < $count; $i++): $s = $services[$i]; ?>
@@ -215,17 +216,17 @@ require __DIR__ . '/includes/layout_header.php';
             <td><?= $s['min_quantity'] ?> / <?= $s['max_quantity'] ?></td>
             <td><span class="badge badge-<?= $s['status'] ?>"><?= $s['status'] ?></span></td>
             <td>
-                <a href="services.php?edit=<?= $s['id'] ?>" class="btn btn-secondary">Hariri</a>
-                <form class="inline" method="post" onsubmit="return confirm('Una uhakika unataka kufuta?');">
+                <a href="services.php?edit=<?= $s['id'] ?>" class="btn btn-secondary"><?= t('services.edit') ?></a>
+                <form class="inline" method="post" onsubmit="return confirm('<?= t('services.delete_confirm') ?>');">
                     <input type="hidden" name="action" value="delete">
                     <input type="hidden" name="id" value="<?= $s['id'] ?>">
-                    <button type="submit" class="btn btn-danger">Futa</button>
+                    <button type="submit" class="btn btn-danger"><?= t('services.delete') ?></button>
                 </form>
             </td>
         </tr>
         <?php endfor; ?>
         <?php if ($services === []): ?>
-        <tr><td colspan="10">Hakuna services bado.</td></tr>
+        <tr><td colspan="10"><?= t('services.no_services') ?></td></tr>
         <?php endif; ?>
     </table>
 </div>

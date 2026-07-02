@@ -11,8 +11,10 @@ require_once __DIR__ . '/../app/models/Order.php';
 require_once __DIR__ . '/../app/models/Service.php';
 require_once __DIR__ . '/../app/models/Provider.php';
 require_once __DIR__ . '/../app/models/Payment.php';
+require_once __DIR__ . '/../app/models/Customer.php';
 require_once __DIR__ . '/../app/services/SmmProviderClient.php';
 require_once __DIR__ . '/../app/services/WhatsAppClient.php';
+require_once __DIR__ . '/../app/helpers/BotLang.php';
 
 $config = require __DIR__ . '/../config/config.php';
 $whatsapp = new WhatsAppClient($config['whatsapp']);
@@ -72,28 +74,26 @@ foreach ($orders as $order) {
 
         $qty = number_format((int) $order['quantity'], 0);
         $unit = $service['unit_label'];
+        $lang = BotLang::forCustomer(Customer::findByPhone($order['customer_phone']));
 
         if ($localStatus === 'completed') {
             $whatsapp->sendText(
                 $order['customer_phone'],
-                "🎉 *ODA IMEKAMILIKA!*\n\n" .
-                "🆔 Oda Na: #{$order['id']}\n" .
-                "🎯 Huduma: {$service['name']}\n" .
-                "🔢 Kiasi: {$qty} {$unit}\n" .
-                "🔗 Link: {$order['link']}\n\n" .
-                "✅ Huduma yako imewasilishwa kikamilifu. Asante kwa kutuamini! 🙏\n\n" .
-                "Tuma \"#\" kuanza oda nyingine.\n\n" .
-                "© KuzaPanel"
+                BotLang::get($lang, 'order_completed_notify', [
+                    '{id}' => $order['id'],
+                    '{service}' => $service['name'],
+                    '{qty}' => $qty,
+                    '{unit}' => $unit,
+                    '{link}' => $order['link'],
+                ])
             );
         } elseif ($localStatus === 'cancelled') {
             $whatsapp->sendText(
                 $order['customer_phone'],
-                "⚠️ *ODA IMEGHAIRIWA*\n\n" .
-                "🆔 Oda Na: #{$order['id']}\n" .
-                "🎯 Huduma: {$service['name']}\n\n" .
-                "Samahani, oda hii haikuweza kukamilika. Tafadhali wasiliana na huduma kwa wateja kwa msaada.\n\n" .
-                "Tuma \"#\" kurudi menu kuu.\n\n" .
-                "© KuzaPanel"
+                BotLang::get($lang, 'order_cancelled_notify', [
+                    '{id}' => $order['id'],
+                    '{service}' => $service['name'],
+                ])
             );
         }
     }

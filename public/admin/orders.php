@@ -9,18 +9,20 @@ Auth::requireLogin();
 $success = null;
 $error = null;
 
+require_once __DIR__ . '/../../app/helpers/Lang.php';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_status') {
     Order::updateStatus((int) $_POST['id'], $_POST['status']);
-    $success = 'Order #' . (int) $_POST['id'] . ' imesasishwa.';
+    $success = 'Order #' . (int) $_POST['id'] . ' ' . t('orders.updated');
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'resend') {
     $resendId = (int) $_POST['id'];
     OrderFulfillment::submit($resendId);
     $fresh = Order::find($resendId);
 
     if ($fresh !== null && $fresh['provider_order_id'] !== null) {
-        $success = "Order #{$resendId} imetumwa kwa provider kwa mafanikio! 🎉";
+        $success = "Order #{$resendId} " . t('orders.resend_success');
     } else {
-        $error = "Order #{$resendId} bado imeshindwa: " . ($fresh['order_error'] ?? 'hitilafu isiyojulikana');
+        $error = "Order #{$resendId} " . t('orders.resend_failed') . ' ' . ($fresh['order_error'] ?? t('orders.unknown_error'));
     }
 }
 
@@ -36,7 +38,7 @@ $result = Order::search($filters, $page, 20);
 $statusOptions = ['pending', 'processing', 'completed', 'cancelled'];
 $paymentOptions = ['pending', 'paid', 'failed'];
 
-$pageTitle = 'Orders';
+$pageTitle = t('orders.title');
 $activeNav = 'orders';
 require __DIR__ . '/includes/layout_header.php';
 ?>
@@ -51,37 +53,37 @@ require __DIR__ . '/includes/layout_header.php';
 <div class="card">
     <form method="get" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
         <div class="form-group" style="margin-bottom:0;flex:1;min-width:200px;">
-            <label>Tafuta (phone, jina, link, au order ID)</label>
+            <label><?= t('orders.search_label') ?></label>
             <input type="text" name="q" value="<?= htmlspecialchars($filters['q']) ?>" placeholder="mfano: 255712345678">
         </div>
         <div class="form-group" style="margin-bottom:0;width:170px;">
-            <label>Order Status</label>
+            <label><?= t('orders.order_status') ?></label>
             <select name="status">
-                <option value="">-- Zote --</option>
+                <option value=""><?= t('orders.all') ?></option>
                 <?php foreach ($statusOptions as $opt): ?>
                     <option value="<?= $opt ?>" <?= $filters['status'] === $opt ? 'selected' : '' ?>><?= ucfirst($opt) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
         <div class="form-group" style="margin-bottom:0;width:170px;">
-            <label>Malipo</label>
+            <label><?= t('orders.payment') ?></label>
             <select name="payment_status">
-                <option value="">-- Zote --</option>
+                <option value=""><?= t('orders.all') ?></option>
                 <?php foreach ($paymentOptions as $opt): ?>
                     <option value="<?= $opt ?>" <?= $filters['payment_status'] === $opt ? 'selected' : '' ?>><?= ucfirst($opt) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
-        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-magnifying-glass"></i> Chuja</button>
-        <a href="orders.php" class="btn btn-secondary">Futa Vichuja</a>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-magnifying-glass"></i> <?= t('orders.filter') ?></button>
+        <a href="orders.php" class="btn btn-secondary"><?= t('orders.clear_filters') ?></a>
     </form>
 </div>
 
 <div class="card">
-    <h3 style="margin-top:0;">Orodha ya Orders <span style="color:var(--text-soft);font-weight:500;font-size:13px;">(<?= $result['total'] ?> jumla)</span></h3>
+    <h3 style="margin-top:0;"><?= t('orders.list_title') ?> <span style="color:var(--text-soft);font-weight:500;font-size:13px;">(<?= $result['total'] ?> <?= t('orders.total_suffix') ?>)</span></h3>
     <table>
         <tr>
-            <th>ID</th><th>Mteja</th><th>Huduma</th><th>Qty</th><th>Link</th><th>Bei</th><th>Malipo</th><th>Provider Order ID</th><th>Status</th><th>Tarehe</th><th>Action</th>
+            <th><?= t('orders.col_id') ?></th><th><?= t('orders.col_customer') ?></th><th><?= t('orders.col_service') ?></th><th><?= t('orders.col_qty') ?></th><th><?= t('orders.col_link') ?></th><th><?= t('orders.col_price') ?></th><th><?= t('orders.col_payment') ?></th><th><?= t('orders.col_provider_order_id') ?></th><th><?= t('orders.col_status') ?></th><th><?= t('orders.col_date') ?></th><th><?= t('orders.col_action') ?></th>
         </tr>
         <?php foreach ($result['rows'] as $o): ?>
         <tr>
@@ -112,7 +114,7 @@ require __DIR__ . '/includes/layout_header.php';
                             <option value="<?= $opt ?>" <?= $o['status'] === $opt ? 'selected' : '' ?>><?= ucfirst($opt) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <button type="submit" class="btn btn-secondary" style="padding:6px 10px;">OK</button>
+                    <button type="submit" class="btn btn-secondary" style="padding:6px 10px;"><?= t('orders.ok') ?></button>
                 </form>
                 <?php if (!empty($o['order_error']) && empty($o['provider_order_id'])): ?>
                 <div style="margin-top:8px;padding:6px 8px;background:var(--red-soft);border-radius:8px;max-width:220px;">
@@ -123,7 +125,7 @@ require __DIR__ . '/includes/layout_header.php';
                         <input type="hidden" name="action" value="resend">
                         <input type="hidden" name="id" value="<?= $o['id'] ?>">
                         <button type="submit" class="btn btn-primary" style="padding:6px 10px;font-size:12px;">
-                            <i class="fa-solid fa-rotate-right"></i> Tuma Tena
+                            <i class="fa-solid fa-rotate-right"></i> <?= t('orders.resend') ?>
                         </button>
                     </form>
                 </div>
@@ -131,12 +133,12 @@ require __DIR__ . '/includes/layout_header.php';
             </td>
             <td style="white-space:nowrap;color:var(--text-soft);font-size:12.5px;"><?= htmlspecialchars($o['created_at']) ?></td>
             <td>
-                <a href="customers.php?q=<?= urlencode($o['customer_phone']) ?>" class="btn btn-secondary">Mteja</a>
+                <a href="customers.php?q=<?= urlencode($o['customer_phone']) ?>" class="btn btn-secondary"><?= t('orders.customer_btn') ?></a>
             </td>
         </tr>
         <?php endforeach; ?>
         <?php if ($result['rows'] === []): ?>
-        <tr><td colspan="11">Hakuna orders zinazolingana.</td></tr>
+        <tr><td colspan="11"><?= t('orders.no_results') ?></td></tr>
         <?php endif; ?>
     </table>
 

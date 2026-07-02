@@ -11,8 +11,10 @@ if (PHP_SAPI !== 'cli') {
 }
 
 require_once __DIR__ . '/../app/models/Session.php';
+require_once __DIR__ . '/../app/models/Customer.php';
 require_once __DIR__ . '/../app/services/WhatsAppClient.php';
 require_once __DIR__ . '/../app/helpers/MainMenu.php';
+require_once __DIR__ . '/../app/helpers/BotLang.php';
 
 $config = require __DIR__ . '/../config/config.php';
 $whatsapp = new WhatsAppClient($config['whatsapp']);
@@ -37,12 +39,9 @@ foreach ($expired as $session) {
         continue;
     }
 
-    $whatsapp->sendText(
-        $phone,
-        "⏰ Muda wa mazungumzo yako umepita kwa kukaa kimya.\n\n" .
-        "Hakuna wasiwasi — tunaanza upya! 👇"
-    );
-    MainMenu::send($whatsapp, $phone);
+    $lang = BotLang::forCustomer(Customer::findByPhone($phone));
+    $whatsapp->sendText($phone, BotLang::get($lang, 'session_expired'));
+    MainMenu::send($whatsapp, $phone, null, $lang);
 
     Session::updateState($phone, 'AWAITING_MAIN_MENU');
 

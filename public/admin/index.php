@@ -18,29 +18,29 @@ require __DIR__ . '/includes/layout_header.php';
 
 <div class="stat-grid">
     <div class="stat-card">
-        <div class="label">Orders Leo</div>
+        <div class="label"><?= t('dashboard.orders_today') ?></div>
         <div class="value"><?= $stats['orders_today'] ?></div>
     </div>
     <div class="stat-card">
-        <div class="label">Mapato Leo (TZS)</div>
+        <div class="label"><?= t('dashboard.revenue_today') ?></div>
         <div class="value"><?= number_format($stats['revenue_today'], 2) ?></div>
     </div>
     <div class="stat-card">
-        <div class="label">Pending Orders</div>
+        <div class="label"><?= t('dashboard.pending_orders') ?></div>
         <div class="value"><?= $stats['pending'] ?></div>
     </div>
     <div class="stat-card">
-        <div class="label">Processing Orders</div>
+        <div class="label"><?= t('dashboard.processing_orders') ?></div>
         <div class="value"><?= $stats['processing'] ?></div>
     </div>
 </div>
 
 <div class="card">
-    <h3 style="margin-top:0;">Muhtasari wa Mfumo</h3>
+    <h3 style="margin-top:0;"><?= t('dashboard.summary') ?></h3>
     <table>
-        <tr><td>Jumla ya Orders</td><td><?= $stats['total'] ?></td></tr>
-        <tr><td>Providers</td><td><?= $providerCount ?></td></tr>
-        <tr><td>Services</td><td><?= $serviceCount ?></td></tr>
+        <tr><td><?= t('dashboard.total_orders') ?></td><td><?= $stats['total'] ?></td></tr>
+        <tr><td><?= t('dashboard.providers') ?></td><td><?= $providerCount ?></td></tr>
+        <tr><td><?= t('dashboard.services') ?></td><td><?= $serviceCount ?></td></tr>
     </table>
 </div>
 

@@ -9,6 +9,7 @@ require_once __DIR__ . '/../models/Customer.php';
 require_once __DIR__ . '/../models/Order.php';
 require_once __DIR__ . '/../models/Service.php';
 require_once __DIR__ . '/../models/Session.php';
+require_once __DIR__ . '/../helpers/BotLang.php';
 
 class WalletTopupHandler
 {
@@ -40,7 +41,9 @@ class WalletTopupHandler
 
         $this->whatsapp->sendText(
             $customer['phone'],
-            "✅ Malipo ya " . number_format((float) $payment['amount'], 0) . " TZS yamethibitishwa na yameongezwa kwenye salio lako!"
+            BotLang::get(BotLang::forCustomer($customer), 'deposit_confirmed', [
+                '{amount}' => number_format((float) $payment['amount'], 0),
+            ])
         );
 
         $this->admin->newDeposit($customer, (float) $payment['amount'], $payment['gateway']);
@@ -83,11 +86,9 @@ class WalletTopupHandler
 
         $this->whatsapp->sendText(
             $referrer['phone'],
-            "🎁 *BONUS YA REFERRAL!*\n\n" .
-            "Rafiki uliyemwalika amekamilisha malipo yake ya kwanza! 🎉\n\n" .
-            "💰 Umepata bonus ya *" . number_format($bonus, 0) . " TZS* kwenye salio lako.\n\n" .
-            "Endelea kualika marafiki zaidi upate bonus zaidi! 🚀\n\n" .
-            "© KuzaPanel"
+            BotLang::get(BotLang::forCustomer($referrer), 'referral_bonus', [
+                '{bonus}' => number_format($bonus, 0),
+            ])
         );
     }
 
@@ -127,21 +128,21 @@ class WalletTopupHandler
             $this->admin->newOrder($order, $service, $customer);
         }
 
+        $lang = BotLang::forCustomer($customer);
+
         $providerOrderLine = !empty($order['provider_order_id'])
-            ? "🔢 Kuzapanel #{$order['provider_order_id']}\n"
+            ? BotLang::get($lang, 'order_provider_line', ['{provider}' => $order['provider_order_id']])
             : '';
 
         $this->whatsapp->sendText(
             $customer['phone'],
-            "🎉 *Oda Imepokelewa Kikamilifu!*\n\n" .
-            "🆔 Namba: #{$orderId}\n" .
-            $providerOrderLine .
-            "⏳ Tumeanza kuifanyia kazi mara moja! 🚀\n\n" .
-            "Unaweza kuifuatilia kwa kutumia kitufe cha 'Fuatilia Oda' kwenye menu kuu.\n\n" .
-            "_Tuma # kurudi menu kuu_"
+            BotLang::get($lang, 'order_received', [
+                '{id}' => $orderId,
+                '{provider_line}' => $providerOrderLine,
+            ])
         );
 
         Session::reset($customer['phone']);
-        MainMenu::send($this->whatsapp, $customer['phone'], $customer['name'] ?? null);
+        MainMenu::send($this->whatsapp, $customer['phone'], $customer['name'] ?? null, $lang);
     }
 }

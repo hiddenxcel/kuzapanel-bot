@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../app/helpers/Auth.php';
+require_once __DIR__ . '/../../app/helpers/Lang.php';
 require_once __DIR__ . '/../../app/models/Message.php';
 require_once __DIR__ . '/../../app/models/Broadcast.php';
 require_once __DIR__ . '/../../app/services/WhatsAppClient.php';
@@ -16,9 +17,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'send_
     $text = trim($_POST['message'] ?? '');
 
     if ($text === '') {
-        $error = 'Tafadhali andika ujumbe wa tangazo.';
+        $error = t('broadcast.empty_message');
     } elseif ($activeCustomers === []) {
-        $error = 'Hakuna mteja aliye-active kwa sasa (saa 24 zilizopita).';
+        $error = t('broadcast.no_active_error');
     } else {
         set_time_limit(120);
 
@@ -38,14 +39,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'send_
 
         Broadcast::create($text, count($activeCustomers), $successCount, $failedCount, Auth::user()['username'] ?? null);
 
-        $success = "Tangazo limetumwa: {$successCount} zimefanikiwa, {$failedCount} zimeshindikana.";
+        $success = t('broadcast.sent_summary') . " {$successCount} " . t('broadcast.succeeded') . " {$failedCount} " . t('broadcast.failed_word');
         $activeCustomers = Message::activeCustomersWithin24h();
     }
 }
 
 $history = Broadcast::all();
 
-$pageTitle = 'Matangazo';
+$pageTitle = t('broadcast.title');
 $activeNav = 'broadcast';
 require __DIR__ . '/includes/layout_header.php';
 ?>
@@ -58,29 +59,28 @@ require __DIR__ . '/includes/layout_header.php';
 <?php endif; ?>
 
 <div class="card">
-    <h3 style="margin-top:0;">📢 Tuma Tangazo</h3>
+    <h3 style="margin-top:0;"><?= t('broadcast.send_title') ?></h3>
     <p style="margin-top:-8px;color:var(--text-soft);font-size:13px;">
-        ⚠️ WhatsApp inaruhusu ujumbe wa moja kwa moja (bila template) tu kwa wateja walio-active
-        ndani ya <strong>saa 24</strong> zilizopita. Kwa sasa hii itafika kwa
-        <strong style="color:var(--text);"><?= count($activeCustomers) ?> wateja</strong>.
-        Kufikia wateja wote (waliolala), tunahitaji WhatsApp Message Template iliyoidhinishwa na Meta — hatua tofauti.
+        ⚠️ <?= t('broadcast.window_notice_1') ?> <strong><?= t('broadcast.window_notice_2') ?></strong><?= t('broadcast.window_notice_3') ?>
+        <strong style="color:var(--text);"><?= count($activeCustomers) ?> <?= t('broadcast.window_notice_4') ?></strong>.
+        <?= t('broadcast.window_notice_5') ?>
     </p>
     <form method="post">
         <input type="hidden" name="action" value="send_broadcast">
         <div class="form-group">
-            <label>Ujumbe wa Tangazo</label>
-            <textarea name="message" rows="5" required placeholder="Andika tangazo lako hapa..."></textarea>
+            <label><?= t('broadcast.message_label') ?></label>
+            <textarea name="message" rows="5" required placeholder="<?= t('broadcast.message_placeholder') ?>"></textarea>
         </div>
         <button type="submit" class="btn btn-primary" <?= $activeCustomers === [] ? 'disabled' : '' ?>>
-            <i class="fa-solid fa-paper-plane"></i> Tuma kwa <?= count($activeCustomers) ?> Wateja
+            <i class="fa-solid fa-paper-plane"></i> <?= t('broadcast.send_to') ?> <?= count($activeCustomers) ?> <?= t('broadcast.customers_suffix') ?>
         </button>
     </form>
 </div>
 
 <div class="card">
-    <h3 style="margin-top:0;">Wateja Walio-Active Sasa (<?= count($activeCustomers) ?>)</h3>
+    <h3 style="margin-top:0;"><?= t('broadcast.active_now') ?> (<?= count($activeCustomers) ?>)</h3>
     <table>
-        <tr><th>Jina</th><th>Phone</th></tr>
+        <tr><th><?= t('broadcast.col_name') ?></th><th><?= t('broadcast.col_phone') ?></th></tr>
         <?php foreach ($activeCustomers as $c): ?>
         <tr>
             <td><?= htmlspecialchars($c['customer_name'] ?: '—') ?></td>
@@ -88,15 +88,15 @@ require __DIR__ . '/includes/layout_header.php';
         </tr>
         <?php endforeach; ?>
         <?php if ($activeCustomers === []): ?>
-        <tr><td colspan="2">Hakuna mteja aliye-active kwa sasa.</td></tr>
+        <tr><td colspan="2"><?= t('broadcast.no_active') ?></td></tr>
         <?php endif; ?>
     </table>
 </div>
 
 <div class="card">
-    <h3 style="margin-top:0;">Historia ya Matangazo</h3>
+    <h3 style="margin-top:0;"><?= t('broadcast.history') ?></h3>
     <table>
-        <tr><th>Ujumbe</th><th>Walengwa</th><th>Mafanikio</th><th>Yameshindikana</th><th>Admin</th><th>Tarehe</th></tr>
+        <tr><th><?= t('broadcast.col_message') ?></th><th><?= t('broadcast.col_targets') ?></th><th><?= t('broadcast.col_success') ?></th><th><?= t('broadcast.col_failed') ?></th><th><?= t('broadcast.col_admin') ?></th><th><?= t('broadcast.col_date') ?></th></tr>
         <?php foreach ($history as $b): ?>
         <tr>
             <td style="max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="<?= htmlspecialchars($b['message']) ?>">
@@ -110,7 +110,7 @@ require __DIR__ . '/includes/layout_header.php';
         </tr>
         <?php endforeach; ?>
         <?php if ($history === []): ?>
-        <tr><td colspan="6">Hakuna matangazo yaliyotumwa bado.</td></tr>
+        <tr><td colspan="6"><?= t('broadcast.no_history') ?></td></tr>
         <?php endif; ?>
     </table>
 </div>

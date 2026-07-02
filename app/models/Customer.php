@@ -137,6 +137,13 @@ class Customer extends BaseModel
         return $code;
     }
 
+    public static function setLang(int $id, string $lang): bool
+    {
+        $stmt = self::db()->prepare('UPDATE customers SET lang = ? WHERE id = ?');
+
+        return $stmt->execute([$lang, $id]);
+    }
+
     public static function setLastPaymentPhone(int $id, string $paymentPhone): bool
     {
         $stmt = self::db()->prepare('UPDATE customers SET last_payment_phone = ? WHERE id = ?');

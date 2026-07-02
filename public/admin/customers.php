@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../app/helpers/Auth.php';
+require_once __DIR__ . '/../../app/helpers/Lang.php';
 require_once __DIR__ . '/../../app/models/Customer.php';
 require_once __DIR__ . '/../../app/models/BalanceAdjustment.php';
 
@@ -17,12 +18,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'adjus
     $signedAmount = $direction === 'debit' ? -abs($rawAmount) : abs($rawAmount);
 
     if ($rawAmount <= 0) {
-        $error = 'Tafadhali jaza kiasi sahihi (zaidi ya 0).';
+        $error = t('customers.fill_valid_amount');
     } elseif (!Customer::adjustBalance($customerId, $signedAmount)) {
-        $error = 'Imeshindikana — labda salio la mteja halitoshi kutoa kiasi hicho.';
+        $error = t('customers.adjust_failed');
     } else {
         BalanceAdjustment::create($customerId, Auth::user()['id'] ?? null, $signedAmount, $note);
-        $success = ($direction === 'debit' ? 'Salio limetolewa.' : 'Salio limeongezwa.');
+        $success = ($direction === 'debit' ? t('customers.debited') : t('customers.credited'));
     }
 }
 
@@ -40,7 +41,7 @@ if (isset($_GET['adjust'])) {
     }
 }
 
-$pageTitle = 'Customers';
+$pageTitle = t('customers.title');
 $activeNav = 'customers';
 require __DIR__ . '/includes/layout_header.php';
 ?>
@@ -54,36 +55,36 @@ require __DIR__ . '/includes/layout_header.php';
 
 <?php if ($adjusting !== null): ?>
 <div class="card">
-    <h3 style="margin-top:0;">💰 Rekebisha Salio — <?= htmlspecialchars($adjusting['name'] ?: $adjusting['phone']) ?></h3>
+    <h3 style="margin-top:0;">💰 <?= t('customers.adjust_balance_title') ?> — <?= htmlspecialchars($adjusting['name'] ?: $adjusting['phone']) ?></h3>
     <p style="margin-top:-8px;color:var(--text-soft);font-size:13px;">
-        Salio la sasa: <strong style="color:var(--text);"><?= number_format((float) $adjusting['balance'], 2) ?> TZS</strong>
+        <?= t('customers.current_balance') ?> <strong style="color:var(--text);"><?= number_format((float) $adjusting['balance'], 2) ?> TZS</strong>
     </p>
     <form method="post" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
         <input type="hidden" name="action" value="adjust_balance">
         <input type="hidden" name="id" value="<?= $adjusting['id'] ?>">
         <div class="form-group" style="margin-bottom:0;width:160px;">
-            <label>Aina</label>
+            <label><?= t('customers.type') ?></label>
             <select name="direction">
-                <option value="credit">➕ Ongeza</option>
-                <option value="debit">➖ Toa</option>
+                <option value="credit"><?= t('customers.credit') ?></option>
+                <option value="debit"><?= t('customers.debit') ?></option>
             </select>
         </div>
         <div class="form-group" style="margin-bottom:0;width:160px;">
-            <label>Kiasi (TZS)</label>
+            <label><?= t('customers.amount') ?></label>
             <input type="number" name="amount" min="1" step="0.01" required>
         </div>
         <div class="form-group" style="margin-bottom:0;flex:1;min-width:220px;">
-            <label>Maelezo (hiari)</label>
-            <input type="text" name="note" placeholder="mfano: Marekebisho ya makosa ya malipo">
+            <label><?= t('customers.note_optional') ?></label>
+            <input type="text" name="note" placeholder="<?= t('customers.note_placeholder') ?>">
         </div>
-        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> Tekeleza</button>
-        <a href="customers.php" class="btn btn-secondary">Ghairi</a>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> <?= t('customers.execute') ?></button>
+        <a href="customers.php" class="btn btn-secondary"><?= t('customers.cancel') ?></a>
     </form>
 
     <?php if ($adjustingHistory !== []): ?>
-    <h3 style="margin-top:22px;font-size:14px;">Historia ya Marekebisho ya Mwisho</h3>
+    <h3 style="margin-top:22px;font-size:14px;"><?= t('customers.recent_adjustments') ?></h3>
     <table>
-        <tr><th>Kiasi</th><th>Maelezo</th><th>Admin</th><th>Tarehe</th></tr>
+        <tr><th><?= t('customers.col_amount') ?></th><th><?= t('customers.col_note') ?></th><th><?= t('customers.col_admin') ?></th><th><?= t('customers.col_date') ?></th></tr>
         <?php foreach ($adjustingHistory as $h): ?>
         <tr>
             <td style="color:<?= $h['amount'] >= 0 ? 'var(--green)' : 'var(--red)' ?>;font-weight:700;">
@@ -102,21 +103,21 @@ require __DIR__ . '/includes/layout_header.php';
 <div class="card">
     <form method="get" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
         <div class="form-group" style="margin-bottom:0;flex:1;min-width:220px;">
-            <label>Tafuta (phone, jina, au referral code)</label>
+            <label><?= t('customers.search_label') ?></label>
             <input type="text" name="q" value="<?= htmlspecialchars($q) ?>" placeholder="mfano: 255712345678">
         </div>
-        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-magnifying-glass"></i> Tafuta</button>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-magnifying-glass"></i> <?= t('customers.search') ?></button>
         <?php if ($q !== ''): ?>
-            <a href="customers.php" class="btn btn-secondary">Futa</a>
+            <a href="customers.php" class="btn btn-secondary"><?= t('customers.clear') ?></a>
         <?php endif; ?>
     </form>
 </div>
 
 <div class="card">
-    <h3 style="margin-top:0;">Orodha ya Wateja <span style="color:var(--text-soft);font-weight:500;font-size:13px;">(<?= $result['total'] ?> jumla)</span></h3>
+    <h3 style="margin-top:0;"><?= t('customers.list_title') ?> <span style="color:var(--text-soft);font-weight:500;font-size:13px;">(<?= $result['total'] ?> <?= t('customers.total_suffix') ?>)</span></h3>
     <table>
         <tr>
-            <th>ID</th><th>Jina</th><th>Phone</th><th>Balance</th><th>Total Spent</th><th>Referral Code</th><th>Orders</th><th>Tarehe ya kujiunga</th><th>Action</th>
+            <th><?= t('customers.col_id') ?></th><th><?= t('customers.col_name') ?></th><th><?= t('customers.col_phone') ?></th><th><?= t('customers.col_balance') ?></th><th><?= t('customers.col_total_spent') ?></th><th><?= t('customers.col_referral_code') ?></th><th><?= t('customers.col_orders') ?></th><th><?= t('customers.col_joined') ?></th><th><?= t('customers.col_action') ?></th>
         </tr>
         <?php foreach ($result['rows'] as $c): ?>
         <tr>
@@ -129,13 +130,13 @@ require __DIR__ . '/includes/layout_header.php';
             <td><?= (int) $c['order_count'] ?></td>
             <td style="white-space:nowrap;color:var(--text-soft);font-size:12.5px;"><?= htmlspecialchars($c['created_at']) ?></td>
             <td style="white-space:nowrap;">
-                <a href="orders.php?q=<?= urlencode($c['phone']) ?>" class="btn btn-secondary">Orders</a>
-                <a href="customers.php?adjust=<?= $c['id'] ?>" class="btn btn-secondary"><i class="fa-solid fa-coins"></i> Salio</a>
+                <a href="orders.php?q=<?= urlencode($c['phone']) ?>" class="btn btn-secondary"><?= t('customers.orders_btn') ?></a>
+                <a href="customers.php?adjust=<?= $c['id'] ?>" class="btn btn-secondary"><i class="fa-solid fa-coins"></i> <?= t('customers.balance_btn') ?></a>
             </td>
         </tr>
         <?php endforeach; ?>
         <?php if ($result['rows'] === []): ?>
-        <tr><td colspan="9">Hakuna wateja wanaolingana.</td></tr>
+        <tr><td colspan="9"><?= t('customers.no_results') ?></td></tr>
         <?php endif; ?>
     </table>
 

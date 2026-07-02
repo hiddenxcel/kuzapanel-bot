@@ -1,34 +1,34 @@
 <?php
 
 require_once __DIR__ . '/../services/WhatsAppClient.php';
+require_once __DIR__ . '/BotLang.php';
 
 class MainMenu
 {
-    public static function rows(): array
+    public static function rows(string $lang = BotLang::DEFAULT): array
     {
         return [
-            ['id' => 'main:new_order', 'title' => '🛒 Weka Oda Mpya', 'description' => 'Followers, likes au views'],
-            ['id' => 'main:topup', 'title' => '💰 Weka Pesa', 'description' => 'Mobile Money / Card'],
-            ['id' => 'main:profile', 'title' => '👤 Wasifu Wangu', 'description' => 'Salio na matumizi yako'],
-            ['id' => 'main:referral', 'title' => '🎁 Mwalike Rafiki', 'description' => 'Pata bonus kwa kila rafiki'],
-            ['id' => 'main:track_order', 'title' => '📦 Fuatilia Oda', 'description' => 'Angalia hatua ya oda yako'],
-            ['id' => 'main:support', 'title' => '🎧 Huduma Kwa Wateja', 'description' => 'Wasiliana na admin'],
-            ['id' => 'main:settings', 'title' => '⚙️ Mipangilio', 'description' => 'Lugha na sarafu'],
-            ['id' => 'main:group', 'title' => '👥 KuzaPanel Group', 'description' => 'Jiunge na taarifa zetu'],
-            ['id' => 'main:website', 'title' => '🌐 KuzaPanel Website', 'description' => 'Huduma zaidi mtandaoni'],
+            ['id' => 'main:new_order', 'title' => BotLang::get($lang, 'menu_new_order_title'), 'description' => BotLang::get($lang, 'menu_new_order_desc')],
+            ['id' => 'main:topup', 'title' => BotLang::get($lang, 'menu_topup_title'), 'description' => BotLang::get($lang, 'menu_topup_desc')],
+            ['id' => 'main:profile', 'title' => BotLang::get($lang, 'menu_profile_title'), 'description' => BotLang::get($lang, 'menu_profile_desc')],
+            ['id' => 'main:referral', 'title' => BotLang::get($lang, 'menu_referral_title'), 'description' => BotLang::get($lang, 'menu_referral_desc')],
+            ['id' => 'main:track_order', 'title' => BotLang::get($lang, 'menu_track_title'), 'description' => BotLang::get($lang, 'menu_track_desc')],
+            ['id' => 'main:support', 'title' => BotLang::get($lang, 'menu_support_title'), 'description' => BotLang::get($lang, 'menu_support_desc')],
+            ['id' => 'main:settings', 'title' => BotLang::get($lang, 'menu_settings_title'), 'description' => BotLang::get($lang, 'menu_settings_desc')],
+            ['id' => 'main:group', 'title' => BotLang::get($lang, 'menu_group_title'), 'description' => BotLang::get($lang, 'menu_group_desc')],
+            ['id' => 'main:website', 'title' => BotLang::get($lang, 'menu_website_title'), 'description' => BotLang::get($lang, 'menu_website_desc')],
         ];
     }
 
-    public static function send(WhatsAppClient $whatsapp, string $phone, ?string $name = null): void
+    public static function send(WhatsAppClient $whatsapp, string $phone, ?string $name = null, string $lang = BotLang::DEFAULT): void
     {
-        $greetingName = $name !== null && $name !== '' ? $name : 'Mteja';
+        $greetingName = $name !== null && $name !== '' ? $name : BotLang::get($lang, 'default_customer_name');
 
-        $welcome = "👑 *KARIBU, " . mb_strtoupper($greetingName) . "!*\n\n" .
-            "Hujambo {$greetingName}! 👋 Karibu.\n\n" .
-            "Mimi ni mshirika wako nipo hapa kukusaidia kukuza akaunti zako za mitandao ya kijamii.\n\n" .
-            "Tunatoa huduma za haraka, salama, na nafuu kuongeza followers, likes, na views 🚀📈\n\n" .
-            "👇 Chagua chaguo hapa chini:";
+        $welcome = BotLang::get($lang, 'menu_welcome', [
+            '{name_upper}' => mb_strtoupper($greetingName),
+            '{name}' => $greetingName,
+        ]);
 
-        $whatsapp->sendList($phone, $welcome, 'Fungua Menyu', 'Main Menu', self::rows());
+        $whatsapp->sendList($phone, $welcome, BotLang::get($lang, 'btn_open_menu'), BotLang::get($lang, 'menu_header'), self::rows($lang));
     }
 }

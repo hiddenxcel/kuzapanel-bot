@@ -1,8 +1,17 @@
 <?php
 
 require_once __DIR__ . '/../../app/helpers/Auth.php';
+require_once __DIR__ . '/../../app/helpers/Lang.php';
 
 Auth::start();
+
+if (isset($_GET['lang'])) {
+    Lang::setLocale($_GET['lang']);
+    header('Location: login.php');
+    exit;
+}
+
+Lang::load();
 
 if (Auth::check()) {
     header('Location: index.php');
@@ -20,15 +29,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    $error = 'Jina la mtumiaji au password sio sahihi.';
+    $error = t('login.invalid');
 }
 ?>
 <!DOCTYPE html>
-<html lang="sw">
+<html lang="<?= Lang::current() ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login — KuzaPanel Bot Admin</title>
+    <title><?= t('login.title') ?></title>
 
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json">
@@ -115,26 +124,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-bottom: 16px;
             display: flex; align-items: center; gap: 8px;
         }
+        .lang-switch { display: flex; justify-content: center; gap: 2px; background: #f1f2f8; border-radius: 8px; padding: 3px; margin: 0 auto 18px; width: fit-content; }
+        .lang-switch a { padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none; color: #64748b; }
+        .lang-switch a.active { background: #fff; color: #0f172a; box-shadow: 0 1px 2px rgba(15,23,42,0.08); }
     </style>
 </head>
 <body>
     <div class="login-box">
+        <div class="lang-switch">
+            <a href="?lang=sw" class="<?= Lang::current() === 'sw' ? 'active' : '' ?>">🇹🇿 SW</a>
+            <a href="?lang=en" class="<?= Lang::current() === 'en' ? 'active' : '' ?>">🇬🇧 EN</a>
+        </div>
         <div class="logo">K</div>
-        <h1>KuzaPanel Bot Admin</h1>
-        <p class="sub">Ingia kuendelea</p>
+        <h1><?= t('login.heading') ?></h1>
+        <p class="sub"><?= t('login.subtitle') ?></p>
         <?php if ($error !== null): ?>
             <div class="alert-error"><i class="fa-solid fa-circle-exclamation"></i> <?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
         <form method="post">
             <div class="form-group">
-                <label>Jina la mtumiaji</label>
+                <label><?= t('login.username') ?></label>
                 <input type="text" name="username" required autofocus>
             </div>
             <div class="form-group">
-                <label>Password</label>
+                <label><?= t('login.password') ?></label>
                 <input type="password" name="password" required>
             </div>
-            <button type="submit">Ingia</button>
+            <button type="submit"><?= t('login.submit') ?></button>
         </form>
     </div>
     <script>
