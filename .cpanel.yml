@@ -5,7 +5,7 @@ deployment:
     # /home/kuzahnoo/repositories/kuzapanel-bot). On "Deploy HEAD Commit" it
     # runs these tasks from inside that clone, rsyncing the working tree into
     # the live app directory while preserving server-only files not in git.
-    - export DEPLOYPATH=/home/jambomasait/bot.kilserengetigreenmilesadventure.com/
+    - export DEPLOYPATH=/home/jambomasait/bot.jambomasaitours.com/
     - /bin/rsync -av --delete
       --no-perms --no-owner --no-group --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r
       --exclude='.git'
