@@ -43,7 +43,11 @@ foreach ($expired as $session) {
     $whatsapp->sendText($phone, BotLang::get($lang, 'session_expired'));
     MainMenu::send($whatsapp, $phone, null, $lang);
 
-    Session::updateState($phone, 'AWAITING_MAIN_MENU');
+    // Reset to IDLE (NOT AWAITING_MAIN_MENU). expiredSessions() excludes IDLE,
+    // so this stops the cron from picking the same session up again and
+    // re-sending the expiry notice every single minute. The customer's next
+    // inbound message re-opens the menu normally (the IDLE case does that).
+    Session::reset($phone);
 
     $notified++;
     echo "Expired session for {$phone}\n";
