@@ -97,7 +97,16 @@ return [
     'inbox.title' => 'Inbox',
     'inbox.no_conversations' => 'Hakuna mazungumzo bado.',
     'inbox.no_messages' => 'Hakuna ujumbe bado kwa mteja huyu.',
-    'inbox.select_customer' => 'Chagua mteja upande wa kushoto kuona mazungumzo.',
+    'inbox.select_customer' => 'Chagua mazungumzo kuona ujumbe.',
+    'inbox.select_hint' => 'Chagua mteja kwenye orodha kusoma mazungumzo yake.',
+    'inbox.search_placeholder' => 'Tafuta jina au namba…',
+    'inbox.no_results' => 'Hakuna mazungumzo yanayolingana na utafutaji.',
+    'inbox.conversations' => 'Mazungumzo',
+    'inbox.back' => 'Rudi',
+    'inbox.outbound' => 'Kutoka kwa bot',
+    'inbox.now' => 'sasa',
+    'inbox.today' => 'Leo',
+    'inbox.yesterday' => 'Jana',
 
     // Broadcast page
     'broadcast.title' => 'Matangazo',

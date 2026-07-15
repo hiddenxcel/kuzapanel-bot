@@ -97,7 +97,16 @@ return [
     'inbox.title' => 'Inbox',
     'inbox.no_conversations' => 'No conversations yet.',
     'inbox.no_messages' => 'No messages yet with this customer.',
-    'inbox.select_customer' => 'Select a customer on the left to view the conversation.',
+    'inbox.select_customer' => 'Select a conversation to view messages.',
+    'inbox.select_hint' => 'Pick a customer from the list to read their chat history.',
+    'inbox.search_placeholder' => 'Search name or number…',
+    'inbox.no_results' => 'No conversations match your search.',
+    'inbox.conversations' => 'Conversations',
+    'inbox.back' => 'Back',
+    'inbox.outbound' => 'Sent by bot',
+    'inbox.now' => 'now',
+    'inbox.today' => 'Today',
+    'inbox.yesterday' => 'Yesterday',
 
     // Broadcast page
     'broadcast.title' => 'Broadcasts',
