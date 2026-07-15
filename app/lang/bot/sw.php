@@ -238,7 +238,7 @@ return [
 
     // Cron order status notifications.
     'order_completed_notify' => "🎉 *ODA IMEKAMILIKA!*\n\n" .
-        "🆔 Oda Na: #{id}\n" .
+        "🆔 Oda Namba: #{number}\n" .
         "🎯 Huduma: {service}\n" .
         "🔢 Kiasi: {qty} {unit}\n" .
         "🔗 Link: {link}\n\n" .
@@ -246,7 +246,7 @@ return [
         "Tuma \"#\" kuanza oda nyingine.\n\n" .
         "© KuzaPanel",
     'order_cancelled_notify' => "⚠️ *ODA IMEGHAIRIWA*\n\n" .
-        "🆔 Oda Na: #{id}\n" .
+        "🆔 Oda Namba: #{number}\n" .
         "🎯 Huduma: {service}\n\n" .
         "Samahani, oda hii haikuweza kukamilika. Tafadhali wasiliana na huduma kwa wateja kwa msaada.\n\n" .
         "Tuma \"#\" kurudi menu kuu.\n\n" .

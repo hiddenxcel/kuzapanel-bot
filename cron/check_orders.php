@@ -76,11 +76,15 @@ foreach ($orders as $order) {
         $unit = $service['unit_label'];
         $lang = BotLang::forCustomer(Customer::findByPhone($order['customer_phone']));
 
+        // Show the provider's order number; fall back to our internal id only
+        // if the order somehow has none.
+        $orderNumber = !empty($order['provider_order_id']) ? $order['provider_order_id'] : $order['id'];
+
         if ($localStatus === 'completed') {
             $whatsapp->sendText(
                 $order['customer_phone'],
                 BotLang::get($lang, 'order_completed_notify', [
-                    '{id}' => $order['id'],
+                    '{number}' => $orderNumber,
                     '{service}' => $service['name'],
                     '{qty}' => $qty,
                     '{unit}' => $unit,
@@ -91,7 +95,7 @@ foreach ($orders as $order) {
             $whatsapp->sendText(
                 $order['customer_phone'],
                 BotLang::get($lang, 'order_cancelled_notify', [
-                    '{id}' => $order['id'],
+                    '{number}' => $orderNumber,
                     '{service}' => $service['name'],
                 ])
             );

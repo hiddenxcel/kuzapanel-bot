@@ -238,7 +238,7 @@ return [
 
     // Cron order status notifications.
     'order_completed_notify' => "🎉 *ORDER COMPLETED!*\n\n" .
-        "🆔 Order No: #{id}\n" .
+        "🆔 Order No: #{number}\n" .
         "🎯 Service: {service}\n" .
         "🔢 Quantity: {qty} {unit}\n" .
         "🔗 Link: {link}\n\n" .
@@ -246,7 +246,7 @@ return [
         "Send \"#\" to start another order.\n\n" .
         "© KuzaPanel",
     'order_cancelled_notify' => "⚠️ *ORDER CANCELLED*\n\n" .
-        "🆔 Order No: #{id}\n" .
+        "🆔 Order No: #{number}\n" .
         "🎯 Service: {service}\n\n" .
         "Sorry, this order couldn't be completed. Please contact customer support for help.\n\n" .
         "Send \"#\" to return to the main menu.\n\n" .
