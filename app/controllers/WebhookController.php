@@ -1235,14 +1235,14 @@ class WebhookController
             $this->admin->newOrder($order, $service, $customer);
         }
 
-        $providerOrderLine = !empty($order['provider_order_id'])
-            ? $this->t($phone, 'order_provider_line', ['{provider}' => $order['provider_order_id']])
-            : '';
+        // Show the provider's order number; fall back to our internal id only
+        // if the order hasn't reached the provider yet (so it's never blank).
+        $orderNumber = !empty($order['provider_order_id']) ? $order['provider_order_id'] : $orderId;
+        $providerOrderLine = $this->t($phone, 'order_provider_line', ['{provider}' => $orderNumber]);
 
         $this->whatsapp->sendText(
             $phone,
             $this->t($phone, 'order_received', [
-                '{id}' => $orderId,
                 '{provider_line}' => $providerOrderLine,
             ])
         );

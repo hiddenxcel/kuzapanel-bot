@@ -227,9 +227,8 @@ return [
         "Salio Halitoshi\n\n" .
         "Unahitaji ziada ya: {shortfall} TZS\n\n" .
         "Je, unataka kulipa sasa ili kukamilisha oda?",
-    'order_provider_line' => "🔢 Kuzapanel #{provider}\n",
+    'order_provider_line' => "🆔 Oda Namba: #{provider}\n",
     'order_received' => "🎉 *Oda Imepokelewa Kikamilifu!*\n\n" .
-        "🆔 Namba: #{id}\n" .
         "{provider_line}⏳ Tumeanza kuifanyia kazi mara moja! 🚀\n\n" .
         "Unaweza kuifuatilia kwa kutumia kitufe cha 'Fuatilia Oda' kwenye menu kuu.\n\n" .
         "_Tuma # kurudi menu kuu_",

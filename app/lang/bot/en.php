@@ -227,9 +227,8 @@ return [
         "Insufficient balance\n\n" .
         "You need an extra: {shortfall} TZS\n\n" .
         "Would you like to pay now to complete the order?",
-    'order_provider_line' => "🔢 Kuzapanel #{provider}\n",
+    'order_provider_line' => "🆔 Order No: #{provider}\n",
     'order_received' => "🎉 *Order Received Successfully!*\n\n" .
-        "🆔 Number: #{id}\n" .
         "{provider_line}⏳ We've started working on it right away! 🚀\n\n" .
         "You can track it using the 'Track Order' button in the main menu.\n\n" .
         "_Send # to return to the main menu_",
