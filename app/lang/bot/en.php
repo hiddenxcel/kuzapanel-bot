@@ -160,7 +160,8 @@ return [
         "Number: {phone}\n\n" .
         "📲 Check your phone — you'll get a payment confirmation prompt (USSD). Enter your PIN to complete.\n\n" .
         "🚀 Your order will be completed automatically once payment is confirmed.\n\n" .
-        "© KuzaPanel",
+        "📲 *Didn't get the USSD?* Tap *Resend USSD* below.\n" .
+        "_Or send \"#\" to return to the main menu._",
 
     // Platform / service selection.
     'no_services' => 'Sorry, no services are available right now.',

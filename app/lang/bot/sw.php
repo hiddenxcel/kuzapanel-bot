@@ -160,7 +160,8 @@ return [
         "Namba: {phone}\n\n" .
         "📲 Angalia simu yako — utapokea ujumbe wa kuthibitisha malipo (USSD). Weka PIN yako kukamilisha.\n\n" .
         "🚀 Oda yako itakamilika moja kwa moja malipo yatakapothibitishwa.\n\n" .
-        "© KuzaPanel",
+        "📲 *Hujapokea USSD?* Bonyeza *Nitumie USSD tena* hapa chini.\n" .
+        "_Au tuma \"#\" kurudi menu kuu._",
 
     // Platform / service selection.
     'no_services' => 'Samahani, hakuna huduma zinazopatikana kwa sasa.',

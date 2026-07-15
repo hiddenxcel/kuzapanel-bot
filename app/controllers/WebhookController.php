@@ -805,12 +805,18 @@ class WebhookController
         }
 
         // Order top-up: keep order data so the webhook can complete it after payment.
-        $this->whatsapp->sendText(
+        // Send with the resend/cancel buttons up front, so a customer who never
+        // gets the USSD prompt can act immediately without messaging us first.
+        $this->whatsapp->sendButtons(
             $phone,
             $this->t($phone, 'order_payment_sent', [
                 '{charge}' => number_format($chargeAmount, 0),
                 '{phone}' => $this->localPhone($rawPhone),
-            ])
+            ]),
+            [
+                ['id' => 'topup_wait:resend', 'title' => $this->t($phone, 'btn_resend_ussd')],
+                ['id' => 'topup_wait:cancel', 'title' => $this->t($phone, 'btn_cancel_payment')],
+            ]
         );
 
         Session::updateState($phone, 'AWAITING_TOPUP_CONFIRMATION', $data);
