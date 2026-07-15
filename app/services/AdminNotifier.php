@@ -24,9 +24,16 @@ class AdminNotifier
 
     public function newOrder(array $order, array $service, array $customer): void
     {
+        // Admin sees both: our internal id (used in the admin panel) and the
+        // provider's order number (shown only once the order reaches the provider).
+        $providerLine = !empty($order['provider_order_id'])
+            ? "🔢 Provider #{$order['provider_order_id']}\n"
+            : '';
+
         $this->notify(
             "🛒 *ODA MPYA*\n\n" .
             "🆔 Oda #{$order['id']}\n" .
+            $providerLine .
             "👤 Mteja: " . ($customer['name'] ?? 'Mteja') . " ({$customer['phone']})\n" .
             "🎯 Huduma: {$service['name']}\n" .
             "🔢 Kiasi: " . number_format((int) $order['quantity'], 0) . " {$service['unit_label']}\n" .

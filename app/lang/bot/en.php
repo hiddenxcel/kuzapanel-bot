@@ -123,7 +123,7 @@ return [
     // Order tracking.
     'track_no_orders' => '📦 You have no orders yet. Send "#" to place a new order.',
     'track_header' => "📦 *TRACK ORDER*\n",
-    'track_line' => "🆔 Order #{id} — {service}\n" .
+    'track_line' => "🆔 Order No #{number} — {service}\n" .
         "   Quantity: {qty} | Cost: {amount} TZS\n" .
         "   Status: {status}",
     'track_footer' => "\nSend \"#\" to return to the main menu.",

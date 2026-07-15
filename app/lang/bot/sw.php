@@ -123,7 +123,7 @@ return [
     // Order tracking.
     'track_no_orders' => '📦 Hauna oda yoyote bado. Tuma "#" kuanza oda mpya.',
     'track_header' => "📦 *FUATILIA ODA*\n",
-    'track_line' => "🆔 Oda #{id} — {service}\n" .
+    'track_line' => "🆔 Oda Namba #{number} — {service}\n" .
         "   Kiasi: {qty} | Gharama: {amount} TZS\n" .
         "   Status: {status}",
     'track_footer' => "\nTuma \"#\" kurudi kwenye menu kuu.",

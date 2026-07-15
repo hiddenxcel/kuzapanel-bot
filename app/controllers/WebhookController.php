@@ -527,8 +527,12 @@ class WebhookController
             $service = Service::find($order['service_id']);
             $serviceName = $service['name'] ?? $this->t($phone, 'default_service_name');
 
+            // Show the provider's order number; fall back to our internal id
+            // only if the order hasn't reached the provider yet.
+            $orderNumber = !empty($order['provider_order_id']) ? $order['provider_order_id'] : $order['id'];
+
             $lines[] = $this->t($phone, 'track_line', [
-                '{id}' => $order['id'],
+                '{number}' => $orderNumber,
                 '{service}' => $serviceName,
                 '{qty}' => $order['quantity'],
                 '{amount}' => number_format((float) $order['amount'], 0),
