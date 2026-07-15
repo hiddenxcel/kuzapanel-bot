@@ -59,7 +59,23 @@ return [
 
     // Session expiry.
     'session_expired' => "⏰ Your session timed out due to inactivity.\n\nNo worries — let's start fresh! 👇",
-    'awaiting_topup_confirmation' => "We're waiting to confirm your payment. We'll message you as soon as it's completed.",
+    'awaiting_topup_confirmation' => "⏳ *WAITING FOR YOUR PAYMENT*\n\n" .
+        "We haven't received confirmation of your payment yet.\n\n" .
+        "📲 *If you didn't get the USSD prompt:* check your phone, or tap *Resend USSD* below.\n" .
+        "✅ *If you've already paid:* please wait a few seconds — we'll message you once it's confirmed.\n\n" .
+        "_Send \"#\" to return to the main menu anytime._",
+    'topup_choose_action' => "⏳ *WAITING FOR YOUR PAYMENT*\n\n" .
+        "We haven't received confirmation of your payment yet. What would you like to do?\n\n" .
+        "📲 *Resend USSD* — get the payment prompt again\n" .
+        "❌ *Cancel payment* — cancel and return to the main menu\n\n" .
+        "_Or send \"#\" to return to the main menu anytime._",
+    'btn_resend_ussd' => '📲 Resend USSD',
+    'btn_cancel_payment' => '❌ Cancel payment',
+    'payment_cancelled' => "❌ *PAYMENT CANCELLED*\n\n" .
+        "No money was charged. Send \"#\" to start over anytime.",
+    'topup_session_expired' => "⏰ *PAYMENT TIMED OUT*\n\n" .
+        "We didn't receive confirmation of your payment in time. No money was charged.\n\n" .
+        "If you'd still like to top up or place an order, let's start fresh 👇",
 
     // Language settings.
     'settings_choose_language' => "🌐 *CHOOSE LANGUAGE*\n\nWhich language would you like to use?",

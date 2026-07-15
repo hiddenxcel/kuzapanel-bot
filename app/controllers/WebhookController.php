@@ -240,7 +240,7 @@ class WebhookController
                 break;
 
             case 'AWAITING_TOPUP_CONFIRMATION':
-                $this->whatsapp->sendText($phone, $this->t($phone, 'awaiting_topup_confirmation'));
+                $this->handleTopupConfirmation($phone, $session, $message);
                 break;
 
             case 'AWAITING_AI_CHAT':
@@ -649,6 +649,43 @@ class WebhookController
         }
 
         $this->initiatePayment($phone, $session['temp_data'], $rawPhone);
+    }
+
+    /**
+     * While awaiting the payment webhook: a customer message here means they're
+     * probably stuck (no USSD arrived, or they gave up). Offer to resend the USSD
+     * (re-picking a phone first) or cancel — plus the usual "#" back-to-menu.
+     */
+    private function handleTopupConfirmation(string $phone, array $session, array $message): void
+    {
+        if ($message['type'] === 'selection' && str_starts_with($message['id'], 'topup_wait:')) {
+            $choice = substr($message['id'], strlen('topup_wait:'));
+
+            if ($choice === 'cancel') {
+                $this->whatsapp->sendText($phone, $this->t($phone, 'payment_cancelled'));
+                Session::reset($phone);
+
+                return;
+            }
+
+            if ($choice === 'resend') {
+                // Re-pick the payment phone, then re-initiate. The stale pending
+                // payment is left to expire on its own (check_orders cron, 60 min).
+                $this->sendPhoneChoice($phone, $session['temp_data']);
+
+                return;
+            }
+        }
+
+        // Any other message: explain what's happening and offer the two actions.
+        $this->whatsapp->sendButtons(
+            $phone,
+            $this->t($phone, 'topup_choose_action'),
+            [
+                ['id' => 'topup_wait:resend', 'title' => $this->t($phone, 'btn_resend_ussd')],
+                ['id' => 'topup_wait:cancel', 'title' => $this->t($phone, 'btn_cancel_payment')],
+            ]
+        );
     }
 
     /**

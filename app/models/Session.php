@@ -97,4 +97,22 @@ class Session extends BaseModel
 
         return $stmt->fetchAll();
     }
+
+    /**
+     * Sessions stuck awaiting a payment webhook that never arrived. These are
+     * excluded from expiredSessions() (the webhook may legitimately take a few
+     * minutes), so they get a longer, separate timeout — after which we assume
+     * the USSD was never completed and free the customer.
+     */
+    public static function expiredTopupSessions(int $timeoutMinutes = 30): array
+    {
+        $stmt = self::db()->prepare(
+            "SELECT *, TIMESTAMPDIFF(MINUTE, updated_at, NOW()) AS idle_minutes FROM sessions
+             WHERE state = 'AWAITING_TOPUP_CONFIRMATION'
+               AND TIMESTAMPDIFF(MINUTE, updated_at, NOW()) >= ?"
+        );
+        $stmt->execute([$timeoutMinutes]);
+
+        return $stmt->fetchAll();
+    }
 }

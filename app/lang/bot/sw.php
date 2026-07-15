@@ -59,7 +59,23 @@ return [
 
     // Session expiry.
     'session_expired' => "⏰ Muda wa mazungumzo yako umepita kwa kukaa kimya.\n\nHakuna wasiwasi — tunaanza upya! 👇",
-    'awaiting_topup_confirmation' => 'Tunasubiri uthibitisho wa malipo yako. Tutakutumia ujumbe mara malipo yatakapokamilika.',
+    'awaiting_topup_confirmation' => "⏳ *TUNASUBIRI MALIPO YAKO*\n\n" .
+        "Bado hatujapokea uthibitisho wa malipo yako.\n\n" .
+        "📲 *Kama hujapokea USSD:* angalia simu yako vizuri, au bonyeza *Nitumie USSD tena* hapa chini.\n" .
+        "✅ *Kama umeshalipa:* subiri sekunde chache — tutakutumia ujumbe malipo yatakapothibitishwa.\n\n" .
+        "_Tuma \"#\" kurudi menu kuu wakati wowote._",
+    'topup_choose_action' => "⏳ *TUNASUBIRI MALIPO YAKO*\n\n" .
+        "Bado hatujapokea uthibitisho wa malipo yako. Ungependa kufanya nini?\n\n" .
+        "📲 *Nitumie USSD tena* — kupokea ombi la malipo upya\n" .
+        "❌ *Sitisha malipo* — kufuta na kurudi menu kuu\n\n" .
+        "_Au tuma \"#\" kurudi menu kuu wakati wowote._",
+    'btn_resend_ussd' => '📲 Nitumie USSD tena',
+    'btn_cancel_payment' => '❌ Sitisha malipo',
+    'payment_cancelled' => "❌ *MALIPO YAMESITISHWA*\n\n" .
+        "Hakuna pesa iliyokatwa. Tuma \"#\" kuanza upya wakati wowote.",
+    'topup_session_expired' => "⏰ *MUDA WA MALIPO UMEPITA*\n\n" .
+        "Hatukupokea uthibitisho wa malipo yako kwa muda. Hakuna pesa iliyokatwa.\n\n" .
+        "Kama bado unataka kuweka pesa au kuagiza, tunaanza upya 👇",
 
     // Language settings.
     'settings_choose_language' => "🌐 *CHAGUA LUGHA*\n\nUnataka kutumia lugha gani?",

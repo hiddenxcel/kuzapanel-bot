@@ -19,10 +19,37 @@ require_once __DIR__ . '/../app/helpers/BotLang.php';
 $config = require __DIR__ . '/../config/config.php';
 $whatsapp = new WhatsAppClient($config['whatsapp']);
 
-$expired = Session::expiredSessions(15);
-
 $notified = 0;
 $silentlyReset = 0;
+$topupExpired = 0;
+
+// Sessions stuck awaiting a payment webhook that never arrived (USSD not
+// completed). Longer timeout than normal sessions because the webhook can
+// legitimately take a few minutes — but after 30 min we free the customer.
+$staleTopups = Session::expiredTopupSessions(30);
+
+foreach ($staleTopups as $session) {
+    $phone = $session['customer_phone'];
+    $idleMinutes = (int) $session['idle_minutes'];
+
+    if ($idleMinutes >= 24 * 60) {
+        Session::reset($phone);
+        $silentlyReset++;
+        echo "Silently reset stale top-up (>24h idle) for {$phone}\n";
+
+        continue;
+    }
+
+    $lang = BotLang::forCustomer(Customer::findByPhone($phone));
+    $whatsapp->sendText($phone, BotLang::get($lang, 'topup_session_expired'));
+    MainMenu::send($whatsapp, $phone, null, $lang);
+    Session::reset($phone);
+
+    $topupExpired++;
+    echo "Expired stale top-up session for {$phone}\n";
+}
+
+$expired = Session::expiredSessions(15);
 
 foreach ($expired as $session) {
     $phone = $session['customer_phone'];
@@ -53,4 +80,4 @@ foreach ($expired as $session) {
     echo "Expired session for {$phone}\n";
 }
 
-echo "Done. Notified {$notified}, silently reset {$silentlyReset} (>24h idle).\n";
+echo "Done. Notified {$notified}, expired {$topupExpired} stale top-up(s), silently reset {$silentlyReset} (>24h idle).\n";
