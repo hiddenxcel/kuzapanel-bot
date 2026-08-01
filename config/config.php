@@ -4,10 +4,16 @@ require_once __DIR__ . '/../app/lib/Env.php';
 
 Env::load(__DIR__ . '/.env');
 
+// All timestamps (PHP and MySQL alike) run on Tanzania time, so "time ago"
+// labels in the admin panel match the customer's actual clock. DB.php applies
+// the matching offset to the MySQL connection.
+date_default_timezone_set(Env::get('APP_TIMEZONE', 'Africa/Dar_es_Salaam'));
+
 return [
     'app' => [
         'env' => Env::get('APP_ENV', 'local'),
         'url' => Env::get('APP_URL', ''),
+        'timezone' => Env::get('APP_TIMEZONE', 'Africa/Dar_es_Salaam'),
     ],
 
     'db' => [

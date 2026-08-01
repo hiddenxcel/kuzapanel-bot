@@ -63,6 +63,26 @@ class Payment extends BaseModel
     }
 
     /**
+     * Atomically claim a payment for confirmation: flips it to 'success' only
+     * if it is not already 'success', and reports whether THIS call was the one
+     * that did it. The UPDATE itself is the lock — two concurrent webhook
+     * deliveries (gateways retry when a 200 is slow) both see 'pending' if the
+     * check is a separate SELECT, and the wallet gets credited twice.
+     *
+     * 'failed' is claimable too: check_orders expires pending payments after an
+     * hour, so a webhook that arrives late must still be honoured.
+     */
+    public static function claimForConfirmation(int $id): bool
+    {
+        $stmt = self::db()->prepare(
+            "UPDATE payments SET status = 'success' WHERE id = ? AND status <> 'success'"
+        );
+        $stmt->execute([$id]);
+
+        return $stmt->rowCount() === 1;
+    }
+
+    /**
      * Mark long-stale pending payments as failed (USSD never completed).
      * Returns the number of rows affected.
      */

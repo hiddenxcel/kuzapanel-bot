@@ -44,11 +44,14 @@ function inbox_time_ago(?string $datetime): string
     if ($diff < 86400) {
         return floor($diff / 3600) . 'h';
     }
-    if ($diff < 172800) {
+    // Compare calendar days, not elapsed hours: a message sent at 23:00 is
+    // "Jana" at 01:00 the next morning, not "1d".
+    $daysAgo = (int) (new DateTime(date('Y-m-d')))->diff(new DateTime(date('Y-m-d', $ts)))->days;
+    if ($daysAgo === 1) {
         return t('inbox.yesterday');
     }
-    if ($diff < 604800) {
-        return floor($diff / 86400) . 'd';
+    if ($daysAgo < 7) {
+        return $daysAgo . 'd';
     }
 
     return date('M j', $ts);

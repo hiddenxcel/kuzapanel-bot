@@ -26,11 +26,14 @@ class WalletTopupHandler
 
     public function handleConfirmedPayment(array $payment): void
     {
-        if ($payment['status'] === 'success') {
+        // Atomically claim the payment. If a concurrent delivery of the same
+        // webhook already claimed it, this returns false and we stop — without
+        // it the wallet gets credited once per delivery, and gateways do retry
+        // whenever a 200 is slow to come back.
+        if (!Payment::claimForConfirmation((int) $payment['id'])) {
             return;
         }
 
-        Payment::updateStatus($payment['id'], 'success');
         Customer::credit((int) $payment['customer_id'], (float) $payment['amount']);
 
         $customer = Customer::find((int) $payment['customer_id']);
