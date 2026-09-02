@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS services (
     provider_id INT UNSIGNED NOT NULL,
     provider_service_id VARCHAR(50) NOT NULL,
     platform VARCHAR(50) NOT NULL,
+    category VARCHAR(100) NULL,
     name VARCHAR(150) NOT NULL,
     unit_label VARCHAR(50) NOT NULL DEFAULT 'Followers',
     cost_price DECIMAL(12,4) NOT NULL,

@@ -171,6 +171,12 @@ return [
     'choose_platform' => 'Please choose a platform from the list.',
     'platform_generic_desc' => 'Various services',
     'no_services_platform' => 'Sorry, there are no services for this platform right now. Send "#" to start over.',
+    'choose_category' => "📂 *CHOOSE CATEGORY*\n" .
+        "You picked {platform}. What category do you need?",
+    'btn_categories' => 'Categories',
+    'categories_header' => 'Categories',
+    'category_other' => 'Other',
+    'choose_category_reminder' => "⚠️ Please choose a category from the list above 👆\n\n_Send \"#\" to go back_",
     'service_menu' => "🎯 *CHOOSE {platform_upper} SERVICES*\n" .
         "Great choice {name}! You picked {platform}.\n\n" .
         "What exactly does your account need? 👇",

@@ -171,6 +171,12 @@ return [
     'choose_platform' => 'Tafadhali chagua platform kutoka kwenye orodha.',
     'platform_generic_desc' => 'Huduma mbalimbali',
     'no_services_platform' => 'Samahani, hakuna huduma za platform hii kwa sasa. Tuma "#" kuanza upya.',
+    'choose_category' => "📂 *CHAGUA AINA*\n" .
+        "Umechagua {platform}. Unahitaji aina gani?",
+    'btn_categories' => 'Aina',
+    'categories_header' => 'Aina',
+    'category_other' => 'Nyingine',
+    'choose_category_reminder' => "⚠️ Tafadhali chagua aina kutoka kwenye orodha hapo juu 👆\n\n_Tuma \"#\" kurudi mwanzo_",
     'service_menu' => "🎯 *CHAGUA HUDUMA ZA {platform_upper}*\n" .
         "Chaguo nzuri {name}! Umechagua {platform}.\n\n" .
         "Unahitaji nini haswa kwa akaunti yako? 👇",

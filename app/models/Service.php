@@ -29,10 +29,81 @@ class Service extends BaseModel
         return $stmt->fetchAll();
     }
 
+    public static function activeByPlatformAndCategory(string $platform, ?string $category): array
+    {
+        if ($category === null) {
+            $stmt = self::db()->prepare(
+                "SELECT * FROM services WHERE status = 'active' AND platform = ? AND category IS NULL ORDER BY sort_order, name"
+            );
+            $stmt->execute([$platform]);
+
+            return $stmt->fetchAll();
+        }
+
+        $stmt = self::db()->prepare(
+            "SELECT * FROM services WHERE status = 'active' AND platform = ? AND category = ? ORDER BY sort_order, name"
+        );
+        $stmt->execute([$platform, $category]);
+
+        return $stmt->fetchAll();
+    }
+
     public static function activePlatforms(): array
     {
         $stmt = self::db()->query(
             "SELECT platform FROM services WHERE status = 'active' GROUP BY platform ORDER BY MIN(sort_order)"
+        );
+
+        return array_column($stmt->fetchAll(), 'platform');
+    }
+
+    /**
+     * Distinct categories in use within an active platform, in the order
+     * they first appear (by sort_order). NULL/empty categories are excluded —
+     * callers check separately whether any uncategorised services exist.
+     */
+    public static function activeCategoriesForPlatform(string $platform): array
+    {
+        $stmt = self::db()->prepare(
+            "SELECT category FROM services
+             WHERE status = 'active' AND platform = ? AND category IS NOT NULL AND category <> ''
+             GROUP BY category ORDER BY MIN(sort_order)"
+        );
+        $stmt->execute([$platform]);
+
+        return array_column($stmt->fetchAll(), 'category');
+    }
+
+    /**
+     * Whether an active platform has at least one service with no category —
+     * used to decide if an "Other" bucket is needed alongside its categories.
+     */
+    public static function hasUncategorisedActive(string $platform): bool
+    {
+        $stmt = self::db()->prepare(
+            "SELECT 1 FROM services
+             WHERE status = 'active' AND platform = ? AND (category IS NULL OR category = '') LIMIT 1"
+        );
+        $stmt->execute([$platform]);
+
+        return $stmt->fetch() !== false;
+    }
+
+    /** Distinct categories across all services (for the admin form's dropdown). */
+    public static function allCategories(): array
+    {
+        $stmt = self::db()->query(
+            "SELECT DISTINCT category FROM services WHERE category IS NOT NULL AND category <> '' ORDER BY category"
+        );
+
+        return array_column($stmt->fetchAll(), 'category');
+    }
+
+    /** Distinct platforms across all services (for the admin form's dropdown). */
+    public static function allPlatforms(): array
+    {
+        $stmt = self::db()->query(
+            "SELECT DISTINCT platform FROM services ORDER BY platform"
         );
 
         return array_column($stmt->fetchAll(), 'platform');
@@ -115,14 +186,15 @@ class Service extends BaseModel
 
         $stmt = self::db()->prepare(
             'INSERT INTO services
-                (provider_id, provider_service_id, platform, name, unit_label, cost_price, my_price,
+                (provider_id, provider_service_id, platform, category, name, unit_label, cost_price, my_price,
                  min_quantity, max_quantity, link_instructions, link_instructions_image, status, sort_order)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $data['provider_id'],
             $data['provider_service_id'],
             $data['platform'],
+            $data['category'] ?? null,
             $data['name'],
             $data['unit_label'] ?? 'Followers',
             $data['cost_price'],
@@ -142,7 +214,7 @@ class Service extends BaseModel
     {
         $stmt = self::db()->prepare(
             'UPDATE services SET
-                provider_id = ?, provider_service_id = ?, platform = ?, name = ?, unit_label = ?,
+                provider_id = ?, provider_service_id = ?, platform = ?, category = ?, name = ?, unit_label = ?,
                 cost_price = ?, my_price = ?, min_quantity = ?, max_quantity = ?,
                 link_instructions = ?, link_instructions_image = ?, status = ?
              WHERE id = ?'
@@ -152,6 +224,7 @@ class Service extends BaseModel
             $data['provider_id'],
             $data['provider_service_id'],
             $data['platform'],
+            $data['category'] ?? null,
             $data['name'],
             $data['unit_label'],
             $data['cost_price'],

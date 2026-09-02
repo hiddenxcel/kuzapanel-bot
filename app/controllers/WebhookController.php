@@ -203,6 +203,10 @@ class WebhookController
                 $this->handlePlatformSelection($phone, $message);
                 break;
 
+            case 'AWAITING_CATEGORY':
+                $this->handleCategorySelection($phone, $session, $message);
+                break;
+
             case 'AWAITING_SERVICE':
                 $this->handleServiceSelection($phone, $session, $message);
                 break;
@@ -875,6 +879,8 @@ class WebhookController
         );
     }
 
+    private const MAX_LIST_ROWS = 10;
+
     private function handlePlatformSelection(string $phone, array $message): void
     {
         if ($message['type'] !== 'selection' || !str_starts_with($message['id'], 'platform:')) {
@@ -893,7 +899,74 @@ class WebhookController
             return;
         }
 
-        $greetingName = ($message['name'] ?? null) !== null && $message['name'] !== '' ? $message['name'] : $this->t($phone, 'default_customer_name');
+        $categories = Service::activeCategoriesForPlatform($platform);
+        $hasUncategorised = Service::hasUncategorisedActive($platform);
+        $bucketCount = count($categories) + ($hasUncategorised ? 1 : 0);
+
+        // Only worth a category step when it actually narrows things down and
+        // still fits in one WhatsApp list (max 10 rows).
+        if (count($categories) > 1 && $bucketCount <= self::MAX_LIST_ROWS) {
+            $this->sendCategoryMenu($phone, $platform, $categories, $hasUncategorised);
+            Session::updateState($phone, 'AWAITING_CATEGORY', ['platform' => $platform]);
+
+            return;
+        }
+
+        $this->sendServiceMenu($phone, $platform, null, $services, $message['name'] ?? null);
+        Session::updateState($phone, 'AWAITING_SERVICE', ['platform' => $platform]);
+    }
+
+    private function sendCategoryMenu(string $phone, string $platform, array $categories, bool $hasUncategorised): void
+    {
+        $rows = array_map(
+            fn (string $category) => [
+                'id' => 'category:' . rawurlencode($category),
+                'title' => mb_substr($category, 0, 24),
+            ],
+            $categories
+        );
+
+        if ($hasUncategorised) {
+            $rows[] = ['id' => 'category:', 'title' => $this->t($phone, 'category_other')];
+        }
+
+        $this->whatsapp->sendList(
+            $phone,
+            $this->t($phone, 'choose_category', ['{platform}' => $platform]),
+            $this->t($phone, 'btn_categories'),
+            $this->t($phone, 'categories_header'),
+            $rows
+        );
+    }
+
+    private function handleCategorySelection(string $phone, array $session, array $message): void
+    {
+        if ($message['type'] !== 'selection' || !str_starts_with($message['id'], 'category:')) {
+            $this->respondWithAiFallback($phone, $message, $this->t($phone, 'choose_category_reminder'));
+
+            return;
+        }
+
+        $platform = $session['temp_data']['platform'];
+        $raw = substr($message['id'], strlen('category:'));
+        $category = $raw === '' ? null : rawurldecode($raw);
+
+        $services = Service::activeByPlatformAndCategory($platform, $category);
+
+        if ($services === []) {
+            $this->whatsapp->sendText($phone, $this->t($phone, 'no_services_platform'));
+            Session::reset($phone);
+
+            return;
+        }
+
+        $this->sendServiceMenu($phone, $platform, $category, $services, $message['name'] ?? null);
+        Session::updateState($phone, 'AWAITING_SERVICE', ['platform' => $platform, 'category' => $category]);
+    }
+
+    private function sendServiceMenu(string $phone, string $platform, ?string $category, array $services, ?string $name): void
+    {
+        $greetingName = $name !== null && $name !== '' ? $name : $this->t($phone, 'default_customer_name');
 
         $rows = array_map(
             fn (array $service) => [
@@ -901,22 +974,22 @@ class WebhookController
                 'title' => mb_substr($service['name'], 0, 24),
                 'description' => $this->t($phone, 'price_per_1000', ['{price}' => number_format((float) $service['my_price'], 0)]),
             ],
-            array_slice($services, 0, 10)
+            array_slice($services, 0, self::MAX_LIST_ROWS)
         );
+
+        $heading = $category !== null ? $platform . ' · ' . $category : $platform;
 
         $this->whatsapp->sendList(
             $phone,
             $this->t($phone, 'service_menu', [
-                '{platform_upper}' => mb_strtoupper($platform),
-                '{platform}' => $platform,
+                '{platform_upper}' => mb_strtoupper($heading),
+                '{platform}' => $heading,
                 '{name}' => $greetingName,
             ]),
             $this->t($phone, 'btn_choose_service'),
             'Services',
             $rows
         );
-
-        Session::updateState($phone, 'AWAITING_SERVICE', ['platform' => $platform]);
     }
 
     private function handleServiceSelection(string $phone, array $session, array $message): void

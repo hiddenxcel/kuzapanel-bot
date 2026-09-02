@@ -19,10 +19,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $unitLabel = trim($_POST['unit_label_custom'] ?? '');
         }
 
+        $platform = $_POST['platform'] ?? '';
+        if ($platform === 'custom') {
+            $platform = trim($_POST['platform_custom'] ?? '');
+        }
+
+        $category = $_POST['category'] ?? '';
+        if ($category === 'custom') {
+            $category = trim($_POST['category_custom'] ?? '');
+        }
+
         $data = [
             'provider_id' => (int) ($_POST['provider_id'] ?? 0),
             'provider_service_id' => trim($_POST['provider_service_id'] ?? ''),
-            'platform' => trim($_POST['platform'] ?? ''),
+            'platform' => trim($platform),
+            'category' => trim($category) ?: null,
             'name' => trim($_POST['name'] ?? ''),
             'unit_label' => $unitLabel,
             'cost_price' => $_POST['cost_price'] ?? '',
@@ -59,6 +70,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $services = Service::all();
 $providers = Provider::all();
+$platforms = Service::allPlatforms();
+$categories = Service::allCategories();
 $editing = null;
 
 if (isset($_GET['edit'])) {
@@ -107,9 +120,41 @@ require __DIR__ . '/includes/layout_header.php';
             <label><?= t('services.provider_service_id') ?></label>
             <input type="text" name="provider_service_id" value="<?= htmlspecialchars($editing['provider_service_id'] ?? '') ?>" required>
         </div>
+        <?php
+            $currentPlatform = $editing['platform'] ?? '';
+            $isCustomPlatform = $currentPlatform !== '' && !in_array($currentPlatform, $platforms, true);
+        ?>
         <div class="form-group">
             <label><?= t('services.platform') ?></label>
-            <input type="text" name="platform" value="<?= htmlspecialchars($editing['platform'] ?? '') ?>" required>
+            <select name="platform" id="platform_select" required onchange="document.getElementById('platform_custom_wrap').style.display = this.value === 'custom' ? 'block' : 'none';">
+                <option value=""<?= $currentPlatform === '' ? ' selected' : '' ?>><?= t('services.choose_platform') ?></option>
+                <?php foreach ($platforms as $p): ?>
+                    <option value="<?= htmlspecialchars($p) ?>" <?= $currentPlatform === $p ? 'selected' : '' ?>><?= htmlspecialchars($p) ?></option>
+                <?php endforeach; ?>
+                <option value="custom" <?= $isCustomPlatform ? 'selected' : '' ?>><?= t('services.platform_other') ?></option>
+            </select>
+        </div>
+        <div class="form-group" id="platform_custom_wrap" style="<?= $isCustomPlatform ? '' : 'display:none;' ?>">
+            <label><?= t('services.platform_custom') ?></label>
+            <input type="text" name="platform_custom" value="<?= $isCustomPlatform ? htmlspecialchars($currentPlatform) : '' ?>" placeholder="<?= t('services.platform') ?>">
+        </div>
+        <?php
+            $currentCategory = $editing['category'] ?? '';
+            $isCustomCategory = $currentCategory !== '' && !in_array($currentCategory, $categories, true);
+        ?>
+        <div class="form-group">
+            <label><?= t('services.category') ?></label>
+            <select name="category" id="category_select" onchange="document.getElementById('category_custom_wrap').style.display = this.value === 'custom' ? 'block' : 'none';">
+                <option value=""<?= $currentCategory === '' ? ' selected' : '' ?>><?= t('services.category_none') ?></option>
+                <?php foreach ($categories as $c): ?>
+                    <option value="<?= htmlspecialchars($c) ?>" <?= $currentCategory === $c ? 'selected' : '' ?>><?= htmlspecialchars($c) ?></option>
+                <?php endforeach; ?>
+                <option value="custom" <?= $isCustomCategory ? 'selected' : '' ?>><?= t('services.category_other') ?></option>
+            </select>
+        </div>
+        <div class="form-group" id="category_custom_wrap" style="<?= $isCustomCategory ? '' : 'display:none;' ?>">
+            <label><?= t('services.category_custom') ?></label>
+            <input type="text" name="category_custom" value="<?= $isCustomCategory ? htmlspecialchars($currentCategory) : '' ?>" placeholder="<?= t('services.category') ?>">
         </div>
         <div class="form-group">
             <label><?= t('services.name') ?></label>
@@ -182,9 +227,18 @@ require __DIR__ . '/includes/layout_header.php';
     <p style="margin-top:-10px;color:var(--text-soft);font-size:13px;">
         <?= t('services.reorder_hint') ?>
     </p>
-    <table>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;">
+        <input type="text" id="serviceSearch" placeholder="<?= t('services.search_placeholder') ?>" style="flex:1; min-width:180px; padding:10px 12px; border:1px solid var(--border); border-radius:9px; font-size:14px; font-family:inherit; background:#fcfcfe;">
+        <select id="platformFilter" style="padding:10px 12px; border:1px solid var(--border); border-radius:9px; font-size:14px; font-family:inherit; background:#fcfcfe;">
+            <option value=""><?= t('services.filter_all_platforms') ?></option>
+            <?php foreach ($platforms as $p): ?>
+                <option value="<?= htmlspecialchars($p) ?>"><?= htmlspecialchars($p) ?></option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+    <table id="servicesTable">
         <tr>
-            <th><?= t('services.col_order') ?></th><th><?= t('services.col_id') ?></th><th><?= t('services.col_provider') ?></th><th><?= t('services.col_platform') ?></th><th><?= t('services.col_name') ?></th><th><?= t('services.col_unit') ?></th><th><?= t('services.col_price') ?></th><th><?= t('services.col_minmax') ?></th><th><?= t('services.col_status') ?></th><th><?= t('services.col_action') ?></th>
+            <th><?= t('services.col_order') ?></th><th><?= t('services.col_id') ?></th><th><?= t('services.col_provider') ?></th><th><?= t('services.col_platform') ?></th><th><?= t('services.col_category') ?></th><th><?= t('services.col_name') ?></th><th><?= t('services.col_unit') ?></th><th><?= t('services.col_price') ?></th><th><?= t('services.col_minmax') ?></th><th><?= t('services.col_status') ?></th><th><?= t('services.col_action') ?></th>
         </tr>
         <?php $count = count($services); ?>
         <?php for ($i = 0; $i < $count; $i++): $s = $services[$i]; ?>
@@ -192,7 +246,7 @@ require __DIR__ . '/includes/layout_header.php';
             $canMoveUp = $i > 0 && $services[$i - 1]['platform'] === $s['platform'];
             $canMoveDown = $i < $count - 1 && $services[$i + 1]['platform'] === $s['platform'];
         ?>
-        <tr>
+        <tr data-platform="<?= htmlspecialchars($s['platform']) ?>" data-search="<?= htmlspecialchars(mb_strtolower($s['name'] . ' ' . $s['platform'] . ' ' . ($s['category'] ?? ''))) ?>">
             <td>
                 <div style="display:flex;gap:4px;">
                     <form class="inline" method="post">
@@ -210,6 +264,7 @@ require __DIR__ . '/includes/layout_header.php';
             <td>#<?= $s['id'] ?></td>
             <td><?= htmlspecialchars($providerNames[$s['provider_id']] ?? '—') ?></td>
             <td><?= htmlspecialchars($s['platform']) ?></td>
+            <td><?= $s['category'] !== null && $s['category'] !== '' ? htmlspecialchars($s['category']) : '<span style="color:var(--text-soft);">—</span>' ?></td>
             <td><?= htmlspecialchars($s['name']) ?></td>
             <td><?= htmlspecialchars($s['unit_label']) ?></td>
             <td><?= number_format((float) $s['my_price'], 2) ?></td>
@@ -226,9 +281,38 @@ require __DIR__ . '/includes/layout_header.php';
         </tr>
         <?php endfor; ?>
         <?php if ($services === []): ?>
-        <tr><td colspan="10"><?= t('services.no_services') ?></td></tr>
+        <tr><td colspan="11"><?= t('services.no_services') ?></td></tr>
         <?php endif; ?>
     </table>
+    <p id="noResultsMsg" style="display:none; color:var(--text-soft); text-align:center; padding:20px 0; margin:0;"><?= t('services.no_results') ?></p>
 </div>
+
+<script>
+(function () {
+    const search = document.getElementById('serviceSearch');
+    const platformFilter = document.getElementById('platformFilter');
+    const rows = Array.from(document.querySelectorAll('#servicesTable tr[data-platform]'));
+    const noResultsMsg = document.getElementById('noResultsMsg');
+
+    function applyFilters() {
+        const q = search.value.trim().toLowerCase();
+        const platform = platformFilter.value;
+        let visibleCount = 0;
+
+        rows.forEach((row) => {
+            const matchesSearch = q === '' || row.dataset.search.includes(q);
+            const matchesPlatform = platform === '' || row.dataset.platform === platform;
+            const visible = matchesSearch && matchesPlatform;
+            row.style.display = visible ? '' : 'none';
+            if (visible) visibleCount++;
+        });
+
+        noResultsMsg.style.display = visibleCount === 0 ? 'block' : 'none';
+    }
+
+    search.addEventListener('input', applyFilters);
+    platformFilter.addEventListener('change', applyFilters);
+})();
+</script>
 
 <?php require __DIR__ . '/includes/layout_footer.php'; ?>
