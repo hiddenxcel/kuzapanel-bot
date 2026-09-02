@@ -10,6 +10,7 @@ require_once __DIR__ . '/../models/Order.php';
 require_once __DIR__ . '/../models/Service.php';
 require_once __DIR__ . '/../models/Session.php';
 require_once __DIR__ . '/../helpers/BotLang.php';
+require_once __DIR__ . '/../helpers/CurrencyHelper.php';
 
 class WalletTopupHandler
 {
@@ -42,10 +43,13 @@ class WalletTopupHandler
             return;
         }
 
+        $currency = CurrencyHelper::forCustomer($customer);
+
         $this->whatsapp->sendText(
             $customer['phone'],
             BotLang::get(BotLang::forCustomer($customer), 'deposit_confirmed', [
-                '{amount}' => number_format((float) $payment['amount'], 0),
+                '{amount}' => CurrencyHelper::format((float) $payment['amount'], $currency),
+                '{currency}' => $currency,
             ])
         );
 
@@ -87,10 +91,13 @@ class WalletTopupHandler
 
         Customer::creditReferralEarning((int) $referrer['id'], $bonus);
 
+        $referrerCurrency = CurrencyHelper::forCustomer($referrer);
+
         $this->whatsapp->sendText(
             $referrer['phone'],
             BotLang::get(BotLang::forCustomer($referrer), 'referral_bonus', [
-                '{bonus}' => number_format($bonus, 0),
+                '{bonus}' => CurrencyHelper::format($bonus, $referrerCurrency),
+                '{currency}' => $referrerCurrency,
             ])
         );
     }

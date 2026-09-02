@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../services/WhatsAppClient.php';
 require_once __DIR__ . '/../services/payments/ZenoPayClient.php';
 require_once __DIR__ . '/../services/payments/SnippeClient.php';
+require_once __DIR__ . '/../services/payments/SnippeSessionClient.php';
 require_once __DIR__ . '/../services/payments/HarakaPayClient.php';
 require_once __DIR__ . '/../services/DeepSeekClient.php';
 require_once __DIR__ . '/../models/Session.php';
@@ -17,12 +18,14 @@ require_once __DIR__ . '/../services/OrderFulfillment.php';
 require_once __DIR__ . '/../services/AdminNotifier.php';
 require_once __DIR__ . '/../helpers/MainMenu.php';
 require_once __DIR__ . '/../helpers/BotLang.php';
+require_once __DIR__ . '/../helpers/CurrencyHelper.php';
 
 class WebhookController
 {
     private WhatsAppClient $whatsapp;
     private ZenoPayClient $zenopay;
     private SnippeClient $snippe;
+    private SnippeSessionClient $snippeSession;
     private HarakaPayClient $harakapay;
     private DeepSeekClient $deepseek;
     private AdminNotifier $admin;
@@ -31,12 +34,19 @@ class WebhookController
     /** Per-request cache of each phone's bot language. */
     private array $langCache = [];
 
+    /** Per-request cache of each phone's display currency. */
+    private array $currencyCache = [];
+
     public function __construct(array $config)
     {
         $this->config = $config;
         $this->whatsapp = new WhatsAppClient($config['whatsapp']);
         $this->zenopay = new ZenoPayClient(PaymentGateway::resolveConfig('zenopay', $config['payments']['zenopay']));
         $this->snippe = new SnippeClient(PaymentGateway::resolveConfig('snippe', $config['payments']['snippe']));
+        // Kenya/Uganda Sessions API shares the same Snippe merchant account
+        // (api_key) as the TZS direct-push gateway — one client instance
+        // serves both snippe_ke and snippe_ug.
+        $this->snippeSession = new SnippeSessionClient(PaymentGateway::resolveConfig('snippe', $config['payments']['snippe']));
         $this->harakapay = new HarakaPayClient(PaymentGateway::resolveConfig('harakapay', $config['payments']['harakapay']));
         $this->deepseek = new DeepSeekClient($config['deepseek']);
         $this->admin = new AdminNotifier($config);
@@ -58,6 +68,28 @@ class WebhookController
     private function t(string $phone, string $key, array $vars = []): string
     {
         return BotLang::get($this->langFor($phone), $key, $vars);
+    }
+
+    /**
+     * The customer's saved display currency (cached per request).
+     */
+    private function currencyFor(string $phone): string
+    {
+        if (!isset($this->currencyCache[$phone])) {
+            $this->currencyCache[$phone] = CurrencyHelper::forCustomer(Customer::findByPhone($phone));
+        }
+
+        return $this->currencyCache[$phone];
+    }
+
+    /**
+     * Convert a TZS (base) amount into the customer's currency and format
+     * it for display — the value every BotLang amount placeholder should
+     * receive instead of a raw number_format() call.
+     */
+    private function money(string $phone, float $amountInTzs): string
+    {
+        return CurrencyHelper::format($amountInTzs, $this->currencyFor($phone));
     }
 
     public function verify(array $params): ?string
@@ -205,8 +237,16 @@ class WebhookController
                 $this->handleMainMenuSelection($phone, $message);
                 break;
 
+            case 'AWAITING_SETTINGS_MENU':
+                $this->handleSettingsMenuSelection($phone, $message);
+                break;
+
             case 'AWAITING_LANGUAGE':
                 $this->handleLanguageSelection($phone, $message);
+                break;
+
+            case 'AWAITING_CURRENCY':
+                $this->handleCurrencySelection($phone, $message);
                 break;
 
             case 'AWAITING_PLATFORM':
@@ -416,8 +456,8 @@ class WebhookController
                 break;
 
             case 'settings':
-                $this->sendLanguageChooser($phone);
-                Session::updateState($phone, 'AWAITING_LANGUAGE');
+                $this->sendSettingsMenu($phone);
+                Session::updateState($phone, 'AWAITING_SETTINGS_MENU');
                 break;
 
             case 'group':
@@ -469,6 +509,76 @@ class WebhookController
         Session::updateState($phone, 'AWAITING_MAIN_MENU');
     }
 
+    private function sendSettingsMenu(string $phone): void
+    {
+        $lang = $this->langFor($phone);
+
+        $this->whatsapp->sendButtons(
+            $phone,
+            BotLang::get($lang, 'settings_menu'),
+            [
+                ['id' => 'settings:language', 'title' => BotLang::get($lang, 'settings_option_language')],
+                ['id' => 'settings:currency', 'title' => BotLang::get($lang, 'settings_option_currency')],
+            ]
+        );
+    }
+
+    private function handleSettingsMenuSelection(string $phone, array $message): void
+    {
+        if ($message['type'] !== 'selection' || !str_starts_with($message['id'], 'settings:')) {
+            $this->respondWithAiFallback($phone, $message, $this->t($phone, 'settings_press_option'));
+
+            return;
+        }
+
+        $choice = substr($message['id'], strlen('settings:'));
+
+        if ($choice === 'currency') {
+            $this->sendCurrencyChooser($phone);
+            Session::updateState($phone, 'AWAITING_CURRENCY');
+
+            return;
+        }
+
+        // 'language' (and anything unrecognized falls back here too)
+        $this->sendLanguageChooser($phone);
+        Session::updateState($phone, 'AWAITING_LANGUAGE');
+    }
+
+    private function sendCurrencyChooser(string $phone): void
+    {
+        $lang = $this->langFor($phone);
+
+        $this->whatsapp->sendButtons(
+            $phone,
+            BotLang::get($lang, 'settings_choose_currency'),
+            [
+                ['id' => 'currency:TZS', 'title' => BotLang::get($lang, 'currency_name_tzs')],
+                ['id' => 'currency:KES', 'title' => BotLang::get($lang, 'currency_name_kes')],
+                ['id' => 'currency:UGX', 'title' => BotLang::get($lang, 'currency_name_ugx')],
+            ]
+        );
+    }
+
+    private function handleCurrencySelection(string $phone, array $message): void
+    {
+        if ($message['type'] !== 'selection' || !str_starts_with($message['id'], 'currency:')) {
+            $this->respondWithAiFallback($phone, $message, $this->t($phone, 'settings_press_currency'));
+
+            return;
+        }
+
+        $chosen = CurrencyHelper::normalize(substr($message['id'], strlen('currency:')));
+
+        $customer = Customer::getOrCreate($phone);
+        Customer::setCurrency((int) $customer['id'], $chosen);
+        $this->currencyCache[$phone] = $chosen;
+
+        $this->whatsapp->sendText($phone, $this->t($phone, 'currency_changed'));
+        $this->sendMainMenu($phone, $customer['name'] ?? null);
+        Session::updateState($phone, 'AWAITING_MAIN_MENU');
+    }
+
     private function sendProfile(string $phone): void
     {
         $customer = Customer::getOrCreate($phone);
@@ -477,8 +587,9 @@ class WebhookController
             $phone,
             $this->t($phone, 'profile', [
                 '{name}' => $customer['name'] ?? $this->t($phone, 'default_customer_name'),
-                '{balance}' => number_format((float) $customer['balance'], 0),
-                '{spent}' => number_format((float) $customer['total_spent'], 0),
+                '{balance}' => $this->money($phone, (float) $customer['balance']),
+                '{spent}' => $this->money($phone, (float) $customer['total_spent']),
+                '{currency}' => $this->currencyFor($phone),
             ])
         );
     }
@@ -519,7 +630,8 @@ class WebhookController
                 '{percent}' => $percent,
                 '{code}' => $code,
                 '{count}' => $referredCount,
-                '{earnings}' => number_format((float) $customer['referral_earnings'], 0),
+                '{earnings}' => $this->money($phone, (float) $customer['referral_earnings']),
+                '{currency}' => $this->currencyFor($phone),
                 '{link}' => $waLink,
             ])
         );
@@ -549,7 +661,8 @@ class WebhookController
                 '{number}' => $orderNumber,
                 '{service}' => $serviceName,
                 '{qty}' => $order['quantity'],
-                '{amount}' => number_format((float) $order['amount'], 0),
+                '{amount}' => $this->money($phone, (float) $order['amount']),
+                '{currency}' => $this->currencyFor($phone),
                 '{status}' => $order['status'],
             ]);
         }
@@ -561,7 +674,12 @@ class WebhookController
 
     private function handleTopupAmount(string $phone, array $session, array $message): void
     {
-        $amount = (float) preg_replace('/[^0-9.]/', '', $message['text'] ?? '');
+        // What the customer typed is in THEIR currency (e.g. a KES customer
+        // typing "500" means 500 KES) — converted to TZS immediately, so
+        // everything downstream (gateway call, wallet, DB) stays TZS-only,
+        // exactly as it is for a TZS customer today.
+        $enteredAmount = (float) preg_replace('/[^0-9.]/', '', $message['text'] ?? '');
+        $amount = CurrencyHelper::toBase($enteredAmount, $this->currencyFor($phone));
 
         if ($amount < 100) {
             $this->whatsapp->sendText($phone, $this->t($phone, 'topup_invalid'));
@@ -574,14 +692,19 @@ class WebhookController
     }
 
     /**
-     * Choose gateway automatically by amount.
-     * For now: Snippe handles ALL amounts (HarakaPay account not yet API-authorized,
-     * ZenoPay disabled). Switch back to HarakaPay for <1000 once its API is enabled:
+     * Choose gateway by the customer's currency: Snippe's Sessions API for
+     * Kenya/Uganda, its direct-push flow for Tanzania.
+     * HarakaPay/ZenoPay are currently disabled for all markets — switch
+     * back to HarakaPay for TZS <1000 once its API is enabled:
      *   return $amount < 1000 ? 'harakapay' : 'snippe';
      */
-    private function gatewayForAmount(float $amount): string
+    private function gatewayForCustomer(string $phone): string
     {
-        return 'snippe';
+        return match ($this->currencyFor($phone)) {
+            'KES' => 'snippe_ke',
+            'UGX' => 'snippe_ug',
+            default => 'snippe',
+        };
     }
 
     /**
@@ -602,7 +725,10 @@ class WebhookController
 
         $this->whatsapp->sendButtons(
             $phone,
-            $this->t($phone, 'payment_method', ['{amount}' => number_format((float) $amount, 0)]),
+            $this->t($phone, 'payment_method', [
+                '{amount}' => $this->money($phone, (float) $amount),
+                '{currency}' => $this->currencyFor($phone),
+            ]),
             [
                 ['id' => 'pay_phone:saved', 'title' => '📱 ' . $savedPhone],
                 ['id' => 'pay_phone:other', 'title' => $this->t($phone, 'btn_other_number')],
@@ -729,6 +855,25 @@ class WebhookController
 
     private function minAmountForPhone(string $rawPhone): int
     {
+        // Kenya/Uganda: the minimum lives on the snippe_ke/snippe_ug
+        // payment_gateways row (in that gateway's own currency — KES for
+        // Kenya, UGX for Uganda), admin-editable from Settings rather than
+        // hardcoded here. Converted to its TZS-equivalent so every caller
+        // keeps comparing TZS against TZS, same as the TZ branch below.
+        if (str_starts_with($rawPhone, '254')) {
+            $gateway = PaymentGateway::findByCode('snippe_ke');
+            $minKes = $gateway !== null ? (float) $gateway['min_amount'] : 0.0;
+
+            return (int) CurrencyHelper::toBase($minKes, 'KES');
+        }
+
+        if (str_starts_with($rawPhone, '256')) {
+            $gateway = PaymentGateway::findByCode('snippe_ug');
+            $minUgx = $gateway !== null ? (float) $gateway['min_amount'] : 0.0;
+
+            return (int) CurrencyHelper::toBase($minUgx, 'UGX');
+        }
+
         $local = str_starts_with($rawPhone, '255') ? '0' . substr($rawPhone, 3) : $rawPhone;
         $prefix = substr($local, 0, 3);
 
@@ -752,13 +897,16 @@ class WebhookController
 
         $minAmount = $this->minAmountForPhone($rawPhone);
         if ($amount < $minAmount) {
-            $this->whatsapp->sendText($phone, $this->t($phone, 'min_amount', ['{min}' => number_format($minAmount, 0)]));
+            $this->whatsapp->sendText($phone, $this->t($phone, 'min_amount', [
+                '{min}' => $this->money($phone, (float) $minAmount),
+                '{currency}' => $this->currencyFor($phone),
+            ]));
             Session::reset($phone);
 
             return;
         }
 
-        $gateway = $this->gatewayForAmount($amount);
+        $gateway = $this->gatewayForCustomer($phone);
         $chargeAmount = PaymentGateway::grossUpAmount($amount, $gateway);
         $localRef = 'KZPTOP' . $customer['id'] . time();
         $webhookBase = rtrim($this->config['app']['url'], '/');
@@ -809,6 +957,18 @@ class WebhookController
                 'amount' => $chargeAmount,
                 'webhook_url' => $webhookBase . '/webhooks/zenopay.php',
             ]),
+            'snippe_ke', 'snippe_ug' => $this->snippeSession->initiate([
+                'order_id' => $localRef,
+                'phone' => $rawPhone,
+                // Always TZS regardless of the customer's own currency —
+                // Snippe's Sessions API rejects any other value and converts
+                // for the payer automatically at its hosted checkout.
+                'amount' => $chargeAmount,
+                'firstname' => $customerName,
+                'lastname' => 'WhatsApp',
+                'email' => 'customer@kuzapanel.local',
+                'webhook_url' => $webhookBase . '/webhooks/snippe.php',
+            ]),
             default => $this->snippe->initiate([
                 'order_id' => $localRef,
                 'phone' => $rawPhone,
@@ -832,7 +992,7 @@ class WebhookController
         }
 
         $reference = $localRef;
-        if ($gateway === 'snippe' && isset($result['reference'])) {
+        if (in_array($gateway, ['snippe', 'snippe_ke', 'snippe_ug'], true) && isset($result['reference'])) {
             Payment::setTransactionRef($paymentId, $result['reference']);
             $reference = $result['reference'];
         } elseif ($gateway === 'harakapay' && isset($result['order_id'])) {
@@ -842,13 +1002,37 @@ class WebhookController
 
         Customer::setLastPaymentPhone((int) $customer['id'], $rawPhone);
 
+        // Sessions API (KES/UGX): the customer taps a checkout link rather
+        // than getting an immediate USSD push — Snippe's own hosted page
+        // collects the phone and drives the prompt from there.
+        if (isset($result['checkout_url'])) {
+            $this->whatsapp->sendCtaUrl(
+                $phone,
+                $this->t($phone, $isStandalone ? 'topup_sent_checkout' : 'order_payment_sent_checkout', [
+                    '{charge}' => $this->money($phone, $chargeAmount),
+                    '{currency}' => $this->currencyFor($phone),
+                ]),
+                $this->t($phone, 'btn_complete_payment'),
+                $result['checkout_url']
+            );
+
+            Session::updateState(
+                $phone,
+                'AWAITING_TOPUP_CONFIRMATION',
+                $isStandalone ? [] : $data + ['order_id' => $orderId]
+            );
+
+            return;
+        }
+
         if ($isStandalone) {
             $this->sendPaymentSentMenu(
                 $phone,
                 $this->t($phone, 'topup_sent', [
-                    '{charge}' => number_format($chargeAmount, 0),
+                    '{charge}' => $this->money($phone, $chargeAmount),
                     '{reference}' => $reference,
-                    '{amount}' => number_format($amount, 0),
+                    '{amount}' => $this->money($phone, $amount),
+                    '{currency}' => $this->currencyFor($phone),
                 ])
             );
 
@@ -863,7 +1047,8 @@ class WebhookController
         $this->whatsapp->sendButtons(
             $phone,
             $this->t($phone, 'order_payment_sent', [
-                '{charge}' => number_format($chargeAmount, 0),
+                '{charge}' => $this->money($phone, $chargeAmount),
+                '{currency}' => $this->currencyFor($phone),
                 '{phone}' => $this->localPhone($rawPhone),
             ]),
             [
@@ -1017,7 +1202,10 @@ class WebhookController
             fn (array $service) => [
                 'id' => 'service:' . $service['id'],
                 'title' => mb_substr($service['name'], 0, 24),
-                'description' => $this->t($phone, 'price_per_1000', ['{price}' => number_format((float) $service['my_price'], 0)]),
+                'description' => $this->t($phone, 'price_per_1000', [
+                    '{price}' => $this->money($phone, (float) $service['my_price']),
+                    '{currency}' => $this->currencyFor($phone),
+                ]),
             ],
             array_slice($services, 0, self::MAX_LIST_ROWS)
         );
@@ -1075,7 +1263,10 @@ class WebhookController
             fn (int $qty) => [
                 'id' => 'qty_package:' . $qty,
                 'title' => ($qty >= 1000 ? number_format($qty / 1000, 0) . 'K' : (string) $qty) . ' ' . $unitLabel,
-                'description' => $this->t($phone, 'qty_total', ['{total}' => number_format(($service['my_price'] / 1000) * $qty, 0)]),
+                'description' => $this->t($phone, 'qty_total', [
+                    '{total}' => $this->money($phone, ($service['my_price'] / 1000) * $qty),
+                    '{currency}' => $this->currencyFor($phone),
+                ]),
             ],
             $packages
         );
@@ -1280,7 +1471,8 @@ class WebhookController
                 '{service}' => $service['name'],
                 '{link}' => $link,
                 '{qty}' => $quantity,
-                '{amount}' => number_format($amount, 0),
+                '{amount}' => $this->money($phone, $amount),
+                '{currency}' => $this->currencyFor($phone),
             ]),
             [
                 ['id' => 'order_confirm:yes', 'title' => $this->t($phone, 'btn_yes_continue')],
@@ -1321,7 +1513,10 @@ class WebhookController
 
         $this->whatsapp->sendButtons(
             $phone,
-            $this->t($phone, 'low_balance', ['{shortfall}' => number_format($shortfall, 0)]),
+            $this->t($phone, 'low_balance', [
+                '{shortfall}' => $this->money($phone, $shortfall),
+                '{currency}' => $this->currencyFor($phone),
+            ]),
             [
                 ['id' => 'topup_decision:yes', 'title' => $this->t($phone, 'btn_yes_pay')],
                 ['id' => 'topup_decision:no', 'title' => $this->t($phone, 'btn_no_cancel_plain')],

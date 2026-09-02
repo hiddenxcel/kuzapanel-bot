@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS customers (
     phone VARCHAR(20) NOT NULL UNIQUE,
     name VARCHAR(150) NULL,
     lang VARCHAR(5) NOT NULL DEFAULT 'sw',
+    currency VARCHAR(3) NOT NULL DEFAULT 'TZS',
     referral_code VARCHAR(10) NULL UNIQUE,
     referred_by INT UNSIGNED NULL,
     referral_earnings DECIMAL(12,2) NOT NULL DEFAULT 0.00,
@@ -103,4 +104,18 @@ CREATE TABLE IF NOT EXISTS balance_adjustments (
     note VARCHAR(255) NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_balance_adj_customer FOREIGN KEY (customer_id) REFERENCES customers(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- TZS is the bot's canonical storage currency (see customers.currency
+-- above) — rate is "TZS per 1 unit of currency", e.g. the KES row's rate of
+-- ~21.5 means 1 KES = 21.5 TZS.
+CREATE TABLE IF NOT EXISTS exchange_rates (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    currency VARCHAR(3) NOT NULL UNIQUE,
+    rate DECIMAL(16,8) NOT NULL,
+    is_enabled TINYINT(1) NOT NULL DEFAULT 1,
+    is_manual TINYINT(1) NOT NULL DEFAULT 0,
+    fetched_at TIMESTAMP NULL DEFAULT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

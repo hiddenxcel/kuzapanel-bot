@@ -85,10 +85,24 @@ return [
         "The order you were placing was cancelled because payment wasn't completed in time.\n\n" .
         "No money was charged. Send \"#\" to start a new order anytime.",
 
+    // Settings menu.
+    'settings_menu' => "⚙️ *SETTINGS*\n\nWhat would you like to change?",
+    'settings_option_language' => '🌐 Language',
+    'settings_option_currency' => '💱 Currency',
+    'settings_press_option' => "⚠️ Please tap one of the options above 👆\n\n_Send \"#\" to return to the main menu_",
+
     // Language settings.
     'settings_choose_language' => "🌐 *CHOOSE LANGUAGE*\n\nWhich language would you like to use?",
     'language_changed' => "✅ You've switched the language to *English*.\n\nWe'll continue in English. 👇",
     'settings_press_language' => "⚠️ Please tap one of the languages above 👆\n\n_Send \"#\" to return to the main menu_",
+
+    // Currency settings.
+    'settings_choose_currency' => "💱 *CHOOSE CURRENCY*\n\nWhich currency would you like prices shown in?",
+    'currency_name_tzs' => 'TZS (Tanzania)',
+    'currency_name_kes' => 'KES (Kenya)',
+    'currency_name_ugx' => 'UGX (Uganda)',
+    'settings_press_currency' => "⚠️ Please tap one of the currencies above 👆\n\n_Send \"#\" to return to the main menu_",
+    'currency_changed' => "✅ Your currency has been updated.\n\nAll prices will now show in your new currency. 👇",
 
     // AI / support.
     'ai_unavailable' => 'Sorry, the AI service is currently unavailable. Tap the button below to talk to our admin directly.',
@@ -108,8 +122,8 @@ return [
     // Profile.
     'profile' => "👤 *MY PROFILE*\n\n" .
         "Name: {name}\n" .
-        "💰 Balance: {balance} TZS\n" .
-        "📊 Total Spent: {spent} TZS\n\n" .
+        "💰 Balance: {balance} {currency}\n" .
+        "📊 Total Spent: {spent} {currency}\n\n" .
         "Send \"#\" to return to the main menu.",
 
     // Referral.
@@ -119,12 +133,12 @@ return [
         "you'll earn *{percent}%* of their deposit straight into your balance! 💰\n\n" .
         "🔑 Your code: *{code}*\n" .
         "👥 Friends you've invited: {count}\n" .
-        "💵 Total earned: {earnings} TZS\n\n" .
+        "💵 Total earned: {earnings} {currency}\n\n" .
         "📲 Share this link with friends:\n{link}\n\n" .
         "Send \"#\" to return to the main menu.",
     'referral_bonus' => "🎁 *REFERRAL BONUS!*\n\n" .
         "A friend you invited just completed their first payment! 🎉\n\n" .
-        "💰 You've earned a bonus of *{bonus} TZS* in your balance.\n\n" .
+        "💰 You've earned a bonus of *{bonus} {currency}* in your balance.\n\n" .
         "Keep inviting more friends to earn more bonuses! 🚀\n\n" .
         "© KuzaPanel",
 
@@ -132,13 +146,13 @@ return [
     'track_no_orders' => '📦 You have no orders yet. Send "#" to place a new order.',
     'track_header' => "📦 *TRACK ORDER*\n",
     'track_line' => "🆔 Order No #{number} — {service}\n" .
-        "   Quantity: {qty} | Cost: {amount} TZS\n" .
+        "   Quantity: {qty} | Cost: {amount} {currency}\n" .
         "   Status: {status}",
     'track_footer' => "\nSend \"#\" to return to the main menu.",
 
     // Top-up.
     'topup_prompt' => "💰 *ADD FUNDS*\n\n" .
-        "Please type the amount you'd like to add to your balance (TZS).\n\n" .
+        "Please type the amount you'd like to add to your balance ({currency}).\n\n" .
         "📌 Example: 5000\n\n" .
         "Send \"#\" to return to the main menu.",
     'topup_invalid' => "⚠️ That amount isn't valid.\n\nPlease type the amount you'd like to add as a number.\n📌 Example: 5000",
@@ -146,8 +160,8 @@ return [
 
     // Payment method / phone.
     'payment_method' => "💳 *PAYMENT METHOD*\n" .
-        "💰 You need: {amount} TZS\n\n" .
-        "You'll pay {amount} TZS.\n\n" .
+        "💰 You need: {amount} {currency}\n\n" .
+        "You'll pay {amount} {currency}.\n\n" .
         "Which number would you like to pay with?",
     'cancelled' => 'Cancelled. Send "#" to start over.',
     'payment_phone_prompt' => "📱 *PAYMENT NUMBER*\n\n" .
@@ -155,21 +169,31 @@ return [
         "📌 Example: 0712345678\n\n" .
         "Send \"#\" to return to the main menu.",
     'payment_phone_invalid' => "⚠️ That number isn't valid.\n\nPlease type the full phone number (Mobile Money).\n📌 Example: 0712345678",
-    'min_amount' => "⚠️ The minimum payment for this number is {min} TZS.\n\n" .
+    'min_amount' => "⚠️ The minimum payment for this number is {min} {currency}.\n\n" .
         "Please try again with a higher amount, or use a number from a different network.\n\n" .
         "Send \"#\" to start over.",
     'payment_failed' => "Sorry, the payment couldn't be started: {message}\nSend \"#\" to start over.",
     'topup_sent' => "🪙 We've sent a payment request!\n\n" .
-        "📲 Check your phone (USSD push) and enter your PIN to confirm *{charge} TZS*.\n\n" .
+        "📲 Check your phone (USSD push) and enter your PIN to confirm *{charge} {currency}*.\n\n" .
         "🆔 Reference: {reference}\n\n" .
-        "💰 Your balance will be topped up by {amount} TZS automatically once payment is confirmed.",
+        "💰 Your balance will be topped up by {amount} {currency} automatically once payment is confirmed.",
     'order_payment_sent' => "✅ *REQUEST SENT*\n\n" .
-        "Amount to pay: *{charge} TZS*\n" .
+        "Amount to pay: *{charge} {currency}*\n" .
         "Number: {phone}\n\n" .
         "📲 Check your phone — you'll get a payment confirmation prompt (USSD). Enter your PIN to complete.\n\n" .
         "🚀 Your order will be completed automatically once payment is confirmed.\n\n" .
         "📲 *Didn't get the USSD?* Tap *Resend USSD* below.\n" .
         "_Or send \"#\" to return to the main menu._",
+
+    // Snippe Sessions checkout (Kenya/Uganda) — link instead of USSD push.
+    'topup_sent_checkout' => "🪙 We've sent a payment request!\n\n" .
+        "📲 Tap the button below to complete your payment of *{charge} {currency}*.\n\n" .
+        "💰 Your balance will be topped up automatically once payment is confirmed.",
+    'order_payment_sent_checkout' => "✅ *REQUEST SENT*\n\n" .
+        "Amount to pay: *{charge} {currency}*\n\n" .
+        "📲 Tap the button below to complete your payment.\n\n" .
+        "🚀 Your order will be completed automatically once payment is confirmed.",
+    'btn_complete_payment' => '💳 Pay Now',
 
     // Platform / service selection.
     'no_services' => 'Sorry, no services are available right now.',
@@ -188,7 +212,7 @@ return [
     'service_menu' => "🎯 *CHOOSE {platform_upper} SERVICES*\n" .
         "Great choice {name}! You picked {platform}.\n\n" .
         "What exactly does your account need? 👇",
-    'price_per_1000' => '{price} TZS per 1000',
+    'price_per_1000' => '{price} {currency} per 1000',
     'choose_service_reminder' => "⚠️ Please choose a service from the list above 👆\n\n_Send \"#\" to go back_",
     'service_unavailable' => 'This service is no longer available. Send "#" to start over.',
 
@@ -196,7 +220,7 @@ return [
     'qty_menu' => "🔢 *CHOOSE QUANTITY*\n" .
         "How many {service} would you like to add?\n\n" .
         "Choose a package 👇",
-    'qty_total' => 'Total: {total} TZS',
+    'qty_total' => 'Total: {total} {currency}',
     'qty_custom_title' => '✏️ Custom Amount',
     'qty_custom_desc' => 'Min: {min} | Max: {max}',
     'qty_custom_prompt' => 'Please type the quantity you want (between {min} and {max}):',
@@ -233,13 +257,13 @@ return [
         "🎯 Service: {service}\n" .
         "🔗 Link: {link}\n" .
         "🔢 Quantity: {qty}\n\n" .
-        "💰 Cost: {amount} TZS\n\n" .
+        "💰 Cost: {amount} {currency}\n\n" .
         "Shall we proceed with this order?",
     'order_cancelled' => 'Order cancelled. Send "#" to start over.',
     'wallet_debit_error' => 'Sorry, something went wrong while using your balance. Send "#" to start over.',
     'low_balance' => "⚠️ *LOW BALANCE*\n" .
         "Insufficient balance\n\n" .
-        "You need an extra: {shortfall} TZS\n\n" .
+        "You need an extra: {shortfall} {currency}\n\n" .
         "Would you like to pay now to complete the order?",
     'order_provider_line' => "🆔 Order No: #{provider}\n",
     'order_received' => "🎉 *Order Received Successfully!*\n\n" .
@@ -248,7 +272,7 @@ return [
         "_Send # to return to the main menu_",
 
     // Deposit confirmation.
-    'deposit_confirmed' => "✅ Payment of {amount} TZS has been confirmed and added to your balance!",
+    'deposit_confirmed' => "✅ Payment of {amount} {currency} has been confirmed and added to your balance!",
 
     // Cron order status notifications.
     'order_completed_notify' => "🎉 *ORDER COMPLETED!*\n\n" .

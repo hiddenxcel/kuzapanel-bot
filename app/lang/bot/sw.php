@@ -85,10 +85,24 @@ return [
         "Oda uliyokuwa ukiitengeneza imeghairiwa kwa sababu hukukamilisha malipo kwa wakati.\n\n" .
         "Hakuna pesa iliyokatwa. Tuma \"#\" kuanzisha oda mpya wakati wowote.",
 
+    // Settings menu.
+    'settings_menu' => "⚙️ *MIPANGILIO*\n\nUnataka kubadilisha nini?",
+    'settings_option_language' => '🌐 Lugha',
+    'settings_option_currency' => '💱 Currency',
+    'settings_press_option' => "⚠️ Tafadhali bonyeza chaguo moja hapo juu 👆\n\n_Tuma \"#\" kurudi menu kuu_",
+
     // Language settings.
     'settings_choose_language' => "🌐 *CHAGUA LUGHA*\n\nUnataka kutumia lugha gani?",
     'language_changed' => "✅ Umebadilisha lugha kuwa *Kiswahili*.\n\nTunaendelea kwa Kiswahili. 👇",
     'settings_press_language' => "⚠️ Tafadhali bonyeza lugha moja hapo juu 👆\n\n_Tuma \"#\" kurudi menu kuu_",
+
+    // Currency settings.
+    'settings_choose_currency' => "💱 *CHAGUA CURRENCY*\n\nUnataka bei zionekane kwa currency gani?",
+    'currency_name_tzs' => 'TZS (Tanzania)',
+    'currency_name_kes' => 'KES (Kenya)',
+    'currency_name_ugx' => 'UGX (Uganda)',
+    'settings_press_currency' => "⚠️ Tafadhali bonyeza currency moja hapo juu 👆\n\n_Tuma \"#\" kurudi menu kuu_",
+    'currency_changed' => "✅ Umebadilisha currency yako.\n\nBei zote zitaonekana kwa currency mpya kuanzia sasa. 👇",
 
     // AI / support.
     'ai_unavailable' => 'Samahani, huduma ya AI haipatikani kwa sasa. Bonyeza kitufe hapa chini kuongea na admin wetu moja kwa moja.',
@@ -108,8 +122,8 @@ return [
     // Profile.
     'profile' => "👤 *WASIFU WANGU*\n\n" .
         "Jina: {name}\n" .
-        "💰 Salio: {balance} TZS\n" .
-        "📊 Jumla Umetumia: {spent} TZS\n\n" .
+        "💰 Salio: {balance} {currency}\n" .
+        "📊 Jumla Umetumia: {spent} {currency}\n\n" .
         "Tuma \"#\" kurudi kwenye menu kuu.",
 
     // Referral.
@@ -119,12 +133,12 @@ return [
         "wewe utapata *{percent}%* ya kiasi alichoweka moja kwa moja kwenye salio lako! 💰\n\n" .
         "🔑 Code yako: *{code}*\n" .
         "👥 Marafiki uliowaalika: {count}\n" .
-        "💵 Umechuma jumla: {earnings} TZS\n\n" .
+        "💵 Umechuma jumla: {earnings} {currency}\n\n" .
         "📲 Shiriki link hii na marafiki:\n{link}\n\n" .
         "Tuma \"#\" kurudi menu kuu.",
     'referral_bonus' => "🎁 *BONUS YA REFERRAL!*\n\n" .
         "Rafiki uliyemwalika amekamilisha malipo yake ya kwanza! 🎉\n\n" .
-        "💰 Umepata bonus ya *{bonus} TZS* kwenye salio lako.\n\n" .
+        "💰 Umepata bonus ya *{bonus} {currency}* kwenye salio lako.\n\n" .
         "Endelea kualika marafiki zaidi upate bonus zaidi! 🚀\n\n" .
         "© KuzaPanel",
 
@@ -132,13 +146,13 @@ return [
     'track_no_orders' => '📦 Hauna oda yoyote bado. Tuma "#" kuanza oda mpya.',
     'track_header' => "📦 *FUATILIA ODA*\n",
     'track_line' => "🆔 Oda Namba #{number} — {service}\n" .
-        "   Kiasi: {qty} | Gharama: {amount} TZS\n" .
+        "   Kiasi: {qty} | Gharama: {amount} {currency}\n" .
         "   Status: {status}",
     'track_footer' => "\nTuma \"#\" kurudi kwenye menu kuu.",
 
     // Top-up.
     'topup_prompt' => "💰 *WEKA PESA*\n\n" .
-        "Tafadhali andika kiasi unachotaka kuweka kwenye salio lako (TZS).\n\n" .
+        "Tafadhali andika kiasi unachotaka kuweka kwenye salio lako ({currency}).\n\n" .
         "📌 Mfano: 5000\n\n" .
         "Tuma \"#\" kurudi menu kuu.",
     'topup_invalid' => "⚠️ Kiasi sio sahihi.\n\nTafadhali andika kiasi unachotaka kuweka kwa namba.\n📌 Mfano: 5000",
@@ -146,8 +160,8 @@ return [
 
     // Payment method / phone.
     'payment_method' => "💳 *NJIA YA MALIPO*\n" .
-        "💰 Unahitaji: {amount} TZS\n\n" .
-        "Utalipa {amount} TZS.\n\n" .
+        "💰 Unahitaji: {amount} {currency}\n\n" .
+        "Utalipa {amount} {currency}.\n\n" .
         "Unataka kulipia kwa namba gani?",
     'cancelled' => 'Imesitishwa. Tuma "#" kuanza upya.',
     'payment_phone_prompt' => "📱 *NAMBA YA MALIPO*\n\n" .
@@ -155,21 +169,31 @@ return [
         "📌 Mfano: 0712345678\n\n" .
         "Tuma \"#\" kurudi menu kuu.",
     'payment_phone_invalid' => "⚠️ Namba sio sahihi.\n\nTafadhali andika namba kamili ya simu (Mobile Money).\n📌 Mfano: 0712345678",
-    'min_amount' => "⚠️ Kiwango cha chini cha malipo kwa namba hii ni {min} TZS.\n\n" .
+    'min_amount' => "⚠️ Kiwango cha chini cha malipo kwa namba hii ni {min} {currency}.\n\n" .
         "Tafadhali jaribu tena na kiasi cha juu zaidi, au tumia namba ya mtandao mwingine.\n\n" .
         "Tuma \"#\" kuanza upya.",
     'payment_failed' => "Samahani, malipo hayakuanzishwa: {message}\nTuma \"#\" kuanza upya.",
     'topup_sent' => "🪙 Tumetuma ombi la malipo!\n\n" .
-        "📲 Angalia simu yako (USSD push) na ingiza PIN kuthibitisha *{charge} TZS*.\n\n" .
+        "📲 Angalia simu yako (USSD push) na ingiza PIN kuthibitisha *{charge} {currency}*.\n\n" .
         "🆔 Kumbukumbu: {reference}\n\n" .
-        "💰 Salio lako litaongezwa kwa {amount} TZS moja kwa moja malipo yatakapothibitishwa.",
+        "💰 Salio lako litaongezwa kwa {amount} {currency} moja kwa moja malipo yatakapothibitishwa.",
     'order_payment_sent' => "✅ *OMBI LIMETUMWA*\n\n" .
-        "Kiasi cha kulipa: *{charge} TZS*\n" .
+        "Kiasi cha kulipa: *{charge} {currency}*\n" .
         "Namba: {phone}\n\n" .
         "📲 Angalia simu yako — utapokea ujumbe wa kuthibitisha malipo (USSD). Weka PIN yako kukamilisha.\n\n" .
         "🚀 Oda yako itakamilika moja kwa moja malipo yatakapothibitishwa.\n\n" .
         "📲 *Hujapokea USSD?* Bonyeza *Nitumie USSD tena* hapa chini.\n" .
         "_Au tuma \"#\" kurudi menu kuu._",
+
+    // Snippe Sessions checkout (Kenya/Uganda) — link instead of USSD push.
+    'topup_sent_checkout' => "🪙 Tumetuma ombi la malipo!\n\n" .
+        "📲 Bonyeza kitufe hapa chini kukamilisha malipo ya *{charge} {currency}*.\n\n" .
+        "💰 Salio lako litaongezwa moja kwa moja malipo yatakapothibitishwa.",
+    'order_payment_sent_checkout' => "✅ *OMBI LIMETUMWA*\n\n" .
+        "Kiasi cha kulipa: *{charge} {currency}*\n\n" .
+        "📲 Bonyeza kitufe hapa chini kukamilisha malipo.\n\n" .
+        "🚀 Oda yako itakamilika moja kwa moja malipo yatakapothibitishwa.",
+    'btn_complete_payment' => '💳 Lipa Sasa',
 
     // Platform / service selection.
     'no_services' => 'Samahani, hakuna huduma zinazopatikana kwa sasa.',
@@ -188,7 +212,7 @@ return [
     'service_menu' => "🎯 *CHAGUA HUDUMA ZA {platform_upper}*\n" .
         "Chaguo nzuri {name}! Umechagua {platform}.\n\n" .
         "Unahitaji nini haswa kwa akaunti yako? 👇",
-    'price_per_1000' => '{price} TZS kwa 1000',
+    'price_per_1000' => '{price} {currency} kwa 1000',
     'choose_service_reminder' => "⚠️ Tafadhali chagua huduma kutoka kwenye orodha hapo juu 👆\n\n_Tuma \"#\" kurudi mwanzo_",
     'service_unavailable' => 'Huduma hii haipatikani tena. Tuma "#" kuanza upya.',
 
@@ -196,7 +220,7 @@ return [
     'qty_menu' => "🔢 *CHAGUA KIASI*\n" .
         "Unataka kuongeza {service} ngapi?\n\n" .
         "Chagua kifurushi 👇",
-    'qty_total' => 'Jumla: {total} TZS',
+    'qty_total' => 'Jumla: {total} {currency}',
     'qty_custom_title' => '✏️ Kiasi Chako',
     'qty_custom_desc' => 'Min: {min} | Max: {max}',
     'qty_custom_prompt' => 'Tafadhali andika idadi (kati ya {min} na {max}) unayotaka:',
@@ -233,13 +257,13 @@ return [
         "🎯 Huduma: {service}\n" .
         "🔗 Link: {link}\n" .
         "🔢 Kiasi: {qty}\n\n" .
-        "💰 Gharama: {amount} TZS\n\n" .
+        "💰 Gharama: {amount} {currency}\n\n" .
         "Je, tuendelee na oda hii?",
     'order_cancelled' => 'Oda imesitishwa. Tuma "#" kuanza upya.',
     'wallet_debit_error' => 'Samahani, hitilafu imetokea wakati wa kutumia salio. Tuma "#" kuanza upya.',
     'low_balance' => "⚠️ *SALIO DOGO*\n" .
         "Salio Halitoshi\n\n" .
-        "Unahitaji ziada ya: {shortfall} TZS\n\n" .
+        "Unahitaji ziada ya: {shortfall} {currency}\n\n" .
         "Je, unataka kulipa sasa ili kukamilisha oda?",
     'order_provider_line' => "🆔 Oda Namba: #{provider}\n",
     'order_received' => "🎉 *Oda Imepokelewa Kikamilifu!*\n\n" .
@@ -248,7 +272,7 @@ return [
         "_Tuma # kurudi menu kuu_",
 
     // Deposit confirmation.
-    'deposit_confirmed' => "✅ Malipo ya {amount} TZS yamethibitishwa na yameongezwa kwenye salio lako!",
+    'deposit_confirmed' => "✅ Malipo ya {amount} {currency} yamethibitishwa na yameongezwa kwenye salio lako!",
 
     // Cron order status notifications.
     'order_completed_notify' => "🎉 *ODA IMEKAMILIKA!*\n\n" .

@@ -23,7 +23,15 @@ if (!$snippe->verifySignature($body, $signature, $timestamp)) {
 
 $data = json_decode($body, true);
 
-if (!$data || ($data['type'] ?? null) !== 'payment.completed') {
+// Direct-push (TZS) webhooks carry type='payment.completed'; the KES/UGX
+// Sessions API has been observed to also set data.status='completed' — accept
+// either shape rather than assuming only one. Neither shape needs its
+// amount read here: the payment's TZS amount is trusted from the payments
+// row (set at initiation), not re-parsed from the webhook body.
+$eventType = $data['type'] ?? null;
+$sessionStatus = $data['data']['status'] ?? null;
+
+if (!$data || ($eventType !== 'payment.completed' && $sessionStatus !== 'completed')) {
     echo json_encode(['status' => 'ignored']);
 
     return;

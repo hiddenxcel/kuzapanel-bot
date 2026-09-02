@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/BaseModel.php';
+require_once __DIR__ . '/../helpers/CurrencyHelper.php';
 
 class Customer extends BaseModel
 {
@@ -33,8 +34,16 @@ class Customer extends BaseModel
             return $customer;
         }
 
-        $stmt = self::db()->prepare('INSERT INTO customers (phone, name, referral_code) VALUES (?, ?, ?)');
-        $stmt->execute([$phone, $name, self::generateUniqueReferralCode()]);
+        // New customer: auto-detect country from the WhatsApp phone number's
+        // country code, and set both currency and bot language from it
+        // (e.g. 254... -> KES + English). Existing customers are never
+        // touched by this — only first contact sets these.
+        $detected = CurrencyHelper::detectFromPhone($phone);
+
+        $stmt = self::db()->prepare(
+            'INSERT INTO customers (phone, name, referral_code, lang, currency) VALUES (?, ?, ?, ?, ?)'
+        );
+        $stmt->execute([$phone, $name, self::generateUniqueReferralCode(), $detected['lang'], $detected['currency']]);
 
         return self::findByPhone($phone);
     }
@@ -142,6 +151,13 @@ class Customer extends BaseModel
         $stmt = self::db()->prepare('UPDATE customers SET lang = ? WHERE id = ?');
 
         return $stmt->execute([$lang, $id]);
+    }
+
+    public static function setCurrency(int $id, string $currency): bool
+    {
+        $stmt = self::db()->prepare('UPDATE customers SET currency = ? WHERE id = ?');
+
+        return $stmt->execute([$currency, $id]);
     }
 
     public static function setLastPaymentPhone(int $id, string $paymentPhone): bool
