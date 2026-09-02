@@ -4,6 +4,9 @@ require_once __DIR__ . '/../../app/helpers/Auth.php';
 require_once __DIR__ . '/../../app/helpers/Lang.php';
 require_once __DIR__ . '/../../app/models/Customer.php';
 require_once __DIR__ . '/../../app/models/BalanceAdjustment.php';
+require_once __DIR__ . '/../../app/services/WhatsAppClient.php';
+require_once __DIR__ . '/../../app/helpers/BotLang.php';
+require_once __DIR__ . '/../../app/helpers/CurrencyHelper.php';
 
 Auth::requireLogin();
 
@@ -24,6 +27,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'adjus
     } else {
         BalanceAdjustment::create($customerId, Auth::user()['id'] ?? null, $signedAmount, $note);
         $success = ($direction === 'debit' ? t('customers.debited') : t('customers.credited'));
+
+        // Let the customer know on WhatsApp — a balance change they didn't
+        // initiate themselves should never be silent.
+        $adjustedCustomer = Customer::find($customerId);
+        if ($adjustedCustomer !== null) {
+            $config = require __DIR__ . '/../../config/config.php';
+            $whatsapp = new WhatsAppClient($config['whatsapp']);
+            $lang = BotLang::forCustomer($adjustedCustomer);
+            $currency = CurrencyHelper::forCustomer($adjustedCustomer);
+
+            $noteLine = $note !== null
+                ? BotLang::get($lang, 'balance_adjustment_note_line', ['{note}' => $note])
+                : '';
+
+            $whatsapp->sendText(
+                $adjustedCustomer['phone'],
+                BotLang::get($lang, $direction === 'debit' ? 'balance_debited_by_admin' : 'balance_credited_by_admin', [
+                    '{amount}' => CurrencyHelper::format($rawAmount, $currency),
+                    '{currency}' => $currency,
+                    '{note_line}' => $noteLine,
+                    '{balance}' => CurrencyHelper::format((float) $adjustedCustomer['balance'], $currency),
+                ])
+            );
+        }
     }
 }
 

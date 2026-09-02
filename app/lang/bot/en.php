@@ -274,6 +274,17 @@ return [
     // Deposit confirmation.
     'deposit_confirmed' => "✅ Payment of {amount} {currency} has been confirmed and added to your balance!",
 
+    // Manual balance adjustment by admin.
+    'balance_credited_by_admin' => "💰 *BALANCE UPDATED*\n\n" .
+        "Admin has added *{amount} {currency}* to your balance.\n" .
+        "{note_line}\n" .
+        "Your new balance: *{balance} {currency}*",
+    'balance_debited_by_admin' => "⚠️ *BALANCE UPDATED*\n\n" .
+        "Admin has deducted *{amount} {currency}* from your balance.\n" .
+        "{note_line}\n" .
+        "Your new balance: *{balance} {currency}*",
+    'balance_adjustment_note_line' => "📝 Reason: {note}\n",
+
     // Cron order status notifications.
     'order_completed_notify' => "🎉 *ORDER COMPLETED!*\n\n" .
         "🆔 Order No: #{number}\n" .

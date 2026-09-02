@@ -274,6 +274,17 @@ return [
     // Deposit confirmation.
     'deposit_confirmed' => "✅ Malipo ya {amount} {currency} yamethibitishwa na yameongezwa kwenye salio lako!",
 
+    // Manual balance adjustment by admin.
+    'balance_credited_by_admin' => "💰 *SALIO LIMEONGEZWA*\n\n" .
+        "Admin ameongeza *{amount} {currency}* kwenye salio lako.\n" .
+        "{note_line}\n" .
+        "Salio lako jipya: *{balance} {currency}*",
+    'balance_debited_by_admin' => "⚠️ *SALIO LIMEPUNGUZWA*\n\n" .
+        "Admin amepunguza *{amount} {currency}* kwenye salio lako.\n" .
+        "{note_line}\n" .
+        "Salio lako jipya: *{balance} {currency}*",
+    'balance_adjustment_note_line' => "📝 Sababu: {note}\n",
+
     // Cron order status notifications.
     'order_completed_notify' => "🎉 *ODA IMEKAMILIKA!*\n\n" .
         "🆔 Oda Namba: #{number}\n" .

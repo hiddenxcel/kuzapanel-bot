@@ -54,6 +54,12 @@ Lang::load();
             --sidebar-bg: #0f172a;
             --sidebar-text: #94a3b8;
             --sidebar-active: #1e293b;
+            --sb-bg: #ffffff;
+            --sb-text: #64748b;
+            --sb-text-hover: #0f172a;
+            --sb-hover-bg: #f6f7fb;
+            --sb-active-bg: #eef2ff;
+            --sb-border: #eceef5;
             --radius: 14px;
         }
         * { box-sizing: border-box; }
@@ -65,7 +71,7 @@ Lang::load();
             color: var(--text);
             -webkit-font-smoothing: antialiased;
         }
-        .layout { display: flex; min-height: 100vh; }
+        .layout { display: flex; min-height: 100vh; align-items: flex-start; }
 
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(8px); }
@@ -105,57 +111,72 @@ Lang::load();
         }
         .sidebar-overlay.show { opacity: 1; pointer-events: all; }
 
-        /* ---- Sidebar ---- */
+        /* ---- Sidebar (light/clean — Linear/Notion style) ---- */
         .sidebar {
-            width: 240px;
-            background: var(--sidebar-bg);
-            color: #fff;
+            width: 248px;
+            background: var(--sb-bg);
+            color: var(--text);
             flex-shrink: 0;
             display: flex;
             flex-direction: column;
             padding: 0;
+            border-right: 1px solid var(--sb-border);
             transition: transform .3s cubic-bezier(.4,0,.2,1);
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow: hidden;
         }
         .sidebar .brand {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 22px 20px;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
+            gap: 11px;
+            padding: 20px 18px;
         }
         .sidebar .brand .logo {
-            width: 34px; height: 34px;
-            border-radius: 10px;
+            width: 32px; height: 32px;
+            border-radius: 9px;
             background: linear-gradient(135deg, var(--primary), #818cf8);
             display: flex; align-items: center; justify-content: center;
-            font-size: 15px; font-weight: 800; color: #fff;
+            font-size: 14px; font-weight: 800; color: #fff;
             flex-shrink: 0;
         }
-        .sidebar .brand .name { font-size: 15px; font-weight: 700; color: #fff; line-height: 1.2; }
-        .sidebar .brand .sub { font-size: 11px; color: var(--sidebar-text); }
-        .sidebar nav { padding: 14px 12px; display: flex; flex-direction: column; gap: 2px; }
+        .sidebar .brand .name { font-size: 14.5px; font-weight: 700; color: var(--text); line-height: 1.2; letter-spacing: -0.01em; }
+        .sidebar .brand .sub { font-size: 11px; color: var(--text-soft); }
+        .sidebar nav {
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            overflow-y: auto;
+            flex: 1;
+        }
         .sidebar nav a {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 11px 14px;
-            color: var(--sidebar-text);
+            gap: 11px;
+            padding: 9px 12px;
+            color: var(--sb-text);
             text-decoration: none;
-            font-size: 14px;
+            font-size: 13.5px;
             font-weight: 500;
-            border-radius: 10px;
-            transition: background .15s ease, color .15s ease;
+            border-radius: 8px;
+            transition: background .13s ease, color .13s ease;
         }
-        .sidebar nav a i { width: 18px; text-align: center; font-size: 14px; transition: transform .15s ease; }
-        .sidebar nav a:hover { background: rgba(255,255,255,0.06); color: #fff; }
-        .sidebar nav a:hover i { transform: scale(1.12); }
-        .sidebar nav a.active { background: var(--primary); color: #fff; }
+        .sidebar nav a svg {
+            width: 18px; height: 18px; flex-shrink: 0;
+            color: #b0b7c6;
+            transition: color .13s ease;
+        }
+        .sidebar nav a:hover { background: var(--sb-hover-bg); color: var(--sb-text-hover); }
+        .sidebar nav a:hover svg { color: var(--text-soft); }
+        .sidebar nav a.active { background: var(--sb-active-bg); color: var(--primary); font-weight: 600; }
+        .sidebar nav a.active svg { color: var(--primary); }
         .sidebar .sidebar-footer {
-            margin-top: auto;
-            padding: 16px 20px;
+            padding: 14px 20px;
             font-size: 11px;
-            color: #475569;
-            border-top: 1px solid rgba(255,255,255,0.08);
+            color: #b0b7c6;
+            border-top: 1px solid var(--sb-border);
         }
 
         /* ---- Main ---- */
@@ -434,18 +455,43 @@ Lang::load();
                 <div class="sub">Bot Admin</div>
             </div>
         </div>
+        <?php
+            // Lucide-style line icons (stroke="currentColor") — matches the
+            // sidebar nav link's own color instead of Font Awesome's fixed
+            // glyph weight, so hover/active states recolor the icon for free.
+            $navIcons = [
+                'dashboard' => '<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
+                'orders' => '<path d="M6 3h9l3 3v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M15 3v3a1 1 0 0 0 1 1h3"/><path d="M9 12h6"/><path d="M9 16h6"/>',
+                'customers' => '<circle cx="9" cy="8" r="3.25"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><path d="M16 8.5a3.25 3.25 0 1 1 3 3.24"/><path d="M15.5 14.5c3 .3 5 2 5.5 5.5"/>',
+                'inbox' => '<path d="M3.5 12h4.2l1.4 3h5.8l1.4-3h4.2"/><path d="M5.2 6.2 3.5 12v6a1.3 1.3 0 0 0 1.3 1.3h14.4A1.3 1.3 0 0 0 20.5 18v-6l-1.7-5.8A1.5 1.5 0 0 0 17.4 5H6.6a1.5 1.5 0 0 0-1.4 1.2Z"/>',
+                'sessions' => '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+                'health' => '<path d="M3.5 12h3.2l2-5 3.4 10 2.3-7 1.6 2h4"/>',
+                'broadcast' => '<path d="M4.5 9.5v5a1 1 0 0 0 1 1h1.4l5 3.3V5.2l-5 3.3H5.5a1 1 0 0 0-1 1Z"/><path d="M15.5 9.5a3.4 3.4 0 0 1 0 5"/><path d="M18 7.5a6.5 6.5 0 0 1 0 9"/>',
+                'reports' => '<path d="M4 20V10"/><path d="M11 20V4"/><path d="M18 20v-7"/><path d="M3 20h18"/>',
+                'providers' => '<rect x="3.5" y="4" width="17" height="6" rx="1.5"/><rect x="3.5" y="14" width="17" height="6" rx="1.5"/><circle cx="7.5" cy="7" r=".75" fill="currentColor" stroke="none"/><circle cx="7.5" cy="17" r=".75" fill="currentColor" stroke="none"/>',
+                'services' => '<path d="m12 3 8.5 4.8v8.4L12 21l-8.5-4.8V7.8Z"/><path d="M12 3v9"/><path d="m3.5 7.8 8.5 4.9 8.5-4.9"/>',
+                'settings' => '<circle cx="12" cy="12" r="2.75"/><path d="M12 4.5v2M12 17.5v2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M4.5 12h2M17.5 12h2M6.3 17.7l1.4-1.4M16.3 7.7l1.4-1.4"/>',
+            ];
+
+            function navIcon(string $key, array $icons): string
+            {
+                $paths = $icons[$key] ?? '';
+
+                return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' . $paths . '</svg>';
+            }
+        ?>
         <nav>
-            <a href="index.php" class="<?= $activeNav === 'dashboard' ? 'active' : '' ?>"><i class="fa-solid fa-gauge"></i> <?= t('nav.dashboard') ?></a>
-            <a href="orders.php" class="<?= $activeNav === 'orders' ? 'active' : '' ?>"><i class="fa-solid fa-receipt"></i> <?= t('nav.orders') ?></a>
-            <a href="customers.php" class="<?= $activeNav === 'customers' ? 'active' : '' ?>"><i class="fa-solid fa-users"></i> <?= t('nav.customers') ?></a>
-            <a href="inbox.php" class="<?= $activeNav === 'inbox' ? 'active' : '' ?>"><i class="fa-solid fa-comments"></i> <?= t('nav.inbox') ?></a>
-            <a href="sessions.php" class="<?= $activeNav === 'sessions' ? 'active' : '' ?>"><i class="fa-solid fa-user-clock"></i> <?= t('nav.sessions') ?></a>
-            <a href="health.php" class="<?= $activeNav === 'health' ? 'active' : '' ?>"><i class="fa-solid fa-heart-pulse"></i> <?= t('nav.health') ?></a>
-            <a href="broadcast.php" class="<?= $activeNav === 'broadcast' ? 'active' : '' ?>"><i class="fa-solid fa-bullhorn"></i> <?= t('nav.broadcast') ?></a>
-            <a href="reports.php" class="<?= $activeNav === 'reports' ? 'active' : '' ?>"><i class="fa-solid fa-chart-line"></i> <?= t('nav.reports') ?></a>
-            <a href="providers.php" class="<?= $activeNav === 'providers' ? 'active' : '' ?>"><i class="fa-solid fa-server"></i> <?= t('nav.providers') ?></a>
-            <a href="services.php" class="<?= $activeNav === 'services' ? 'active' : '' ?>"><i class="fa-solid fa-layer-group"></i> <?= t('nav.services') ?></a>
-            <a href="settings.php" class="<?= $activeNav === 'settings' ? 'active' : '' ?>"><i class="fa-solid fa-gear"></i> <?= t('nav.settings') ?></a>
+            <a href="index.php" class="<?= $activeNav === 'dashboard' ? 'active' : '' ?>"><?= navIcon('dashboard', $navIcons) ?> <?= t('nav.dashboard') ?></a>
+            <a href="orders.php" class="<?= $activeNav === 'orders' ? 'active' : '' ?>"><?= navIcon('orders', $navIcons) ?> <?= t('nav.orders') ?></a>
+            <a href="customers.php" class="<?= $activeNav === 'customers' ? 'active' : '' ?>"><?= navIcon('customers', $navIcons) ?> <?= t('nav.customers') ?></a>
+            <a href="inbox.php" class="<?= $activeNav === 'inbox' ? 'active' : '' ?>"><?= navIcon('inbox', $navIcons) ?> <?= t('nav.inbox') ?></a>
+            <a href="sessions.php" class="<?= $activeNav === 'sessions' ? 'active' : '' ?>"><?= navIcon('sessions', $navIcons) ?> <?= t('nav.sessions') ?></a>
+            <a href="health.php" class="<?= $activeNav === 'health' ? 'active' : '' ?>"><?= navIcon('health', $navIcons) ?> <?= t('nav.health') ?></a>
+            <a href="broadcast.php" class="<?= $activeNav === 'broadcast' ? 'active' : '' ?>"><?= navIcon('broadcast', $navIcons) ?> <?= t('nav.broadcast') ?></a>
+            <a href="reports.php" class="<?= $activeNav === 'reports' ? 'active' : '' ?>"><?= navIcon('reports', $navIcons) ?> <?= t('nav.reports') ?></a>
+            <a href="providers.php" class="<?= $activeNav === 'providers' ? 'active' : '' ?>"><?= navIcon('providers', $navIcons) ?> <?= t('nav.providers') ?></a>
+            <a href="services.php" class="<?= $activeNav === 'services' ? 'active' : '' ?>"><?= navIcon('services', $navIcons) ?> <?= t('nav.services') ?></a>
+            <a href="settings.php" class="<?= $activeNav === 'settings' ? 'active' : '' ?>"><?= navIcon('settings', $navIcons) ?> <?= t('nav.settings') ?></a>
         </nav>
         <div class="sidebar-footer">&copy; <?= date('Y') ?> KuzaPanel</div>
     </div>

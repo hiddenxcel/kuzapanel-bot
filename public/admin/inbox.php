@@ -4,13 +4,45 @@ require_once __DIR__ . '/../../app/helpers/Auth.php';
 require_once __DIR__ . '/../../app/helpers/Lang.php';
 require_once __DIR__ . '/../../app/models/Message.php';
 require_once __DIR__ . '/../../app/models/Customer.php';
+require_once __DIR__ . '/../../app/services/WhatsAppClient.php';
 
 Auth::requireLogin();
+
+$sendError = null;
+$sentToPhone = null;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'send_message') {
+    $toPhone = trim($_POST['phone'] ?? '');
+    $text = trim($_POST['message'] ?? '');
+    $sentToPhone = $toPhone;
+
+    if ($toPhone !== '' && $text !== '') {
+        $config = require __DIR__ . '/../../config/config.php';
+        $whatsapp = new WhatsAppClient($config['whatsapp']);
+
+        if (!$whatsapp->sendText($toPhone, $text)) {
+            $sendError = t('inbox.send_failed');
+        }
+    }
+
+    // Redirect back to the same thread (POST-redirect-GET) so a page
+    // refresh never resends the same message. On failure, fall through and
+    // re-render this same thread (via $sentToPhone below) with the error
+    // shown, instead of redirecting to a URL with no ?phone= at all.
+    if ($sendError === null) {
+        header('Location: inbox.php?phone=' . urlencode($toPhone));
+
+        return;
+    }
+}
 
 $customers = Message::recentCustomers();
 $messagesToday = Message::countForDate(date('Y-m-d'));
 
-$activePhone = trim($_GET['phone'] ?? '');
+// $sentToPhone is set only when a send just failed — keeps the thread open
+// on the phone the admin was replying to, since the failed POST carried no
+// ?phone= query string of its own.
+$activePhone = $sentToPhone ?? trim($_GET['phone'] ?? '');
 $activeCustomer = null;
 $thread = [];
 
@@ -188,6 +220,28 @@ $activeDisplay = $activeName !== '' ? $activeName : $activePhone;
 
     .it-body { flex: 1; overflow-y: auto; padding: 20px 18px; display: flex; flex-direction: column; gap: 3px; }
 
+    /* ===== Composer (admin reply box) ===== */
+    .it-send-error { margin: 0 18px; padding: 8px 12px; background: var(--red-soft); color: var(--red); font-size: 12.5px; border-radius: 8px; }
+    .it-composer {
+        display: flex; align-items: flex-end; gap: 10px;
+        padding: 12px 18px; border-top: 1px solid var(--border); background: var(--card);
+    }
+    .it-composer textarea {
+        flex: 1; resize: none; max-height: 120px; padding: 10px 14px;
+        border: 1px solid var(--border); border-radius: 20px;
+        font-family: inherit; font-size: 13.5px; line-height: 1.4;
+        background: #f6f7fb; transition: border-color .15s ease, background .15s ease;
+    }
+    .it-composer textarea:focus { outline: none; border-color: var(--primary); background: #fff; }
+    .it-composer button {
+        flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%;
+        border: none; background: var(--primary); color: #fff; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; font-size: 15px;
+        transition: filter .15s ease, transform .05s ease;
+    }
+    .it-composer button:hover { filter: brightness(1.08); }
+    .it-composer button:active { transform: scale(0.94); }
+
     .day-sep { align-self: center; margin: 12px 0 8px; }
     .day-sep span { background: #e9edf5; color: var(--text-soft); font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 999px; letter-spacing: 0.02em; }
 
@@ -311,6 +365,17 @@ $activeDisplay = $activeName !== '' ? $activeName : $activePhone;
                     <?php endforeach; ?>
                 <?php endif; ?>
             </div>
+
+            <?php if ($sendError !== null): ?>
+                <div class="it-send-error"><?= htmlspecialchars($sendError) ?></div>
+            <?php endif; ?>
+
+            <form method="post" class="it-composer">
+                <input type="hidden" name="action" value="send_message">
+                <input type="hidden" name="phone" value="<?= htmlspecialchars($activePhone) ?>">
+                <textarea name="message" placeholder="<?= htmlspecialchars(t('inbox.message_placeholder')) ?>" required rows="1" id="composerInput"></textarea>
+                <button type="submit" aria-label="<?= htmlspecialchars(t('inbox.send')) ?>"><i class="fa-solid fa-paper-plane"></i></button>
+            </form>
         <?php else: ?>
             <div class="it-empty">
                 <div class="it-empty-icon"><i class="fa-regular fa-comments"></i></div>
@@ -345,6 +410,26 @@ $activeDisplay = $activeName !== '' ? $activeName : $activePhone;
     (function () {
         var body = document.getElementById('threadBody');
         if (body) body.scrollTop = body.scrollHeight;
+    })();
+
+    // Composer: Enter sends, Shift+Enter adds a newline; textarea grows with content.
+    (function () {
+        var input = document.getElementById('composerInput');
+        if (!input) return;
+
+        input.addEventListener('input', function () {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.closest('form').submit();
+            }
+        });
+
+        input.focus();
     })();
 </script>
 
