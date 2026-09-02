@@ -26,6 +26,24 @@ class Provider extends BaseModel
         return $stmt->fetchAll();
     }
 
+    /** Summary counts for the admin page's stat row. */
+    public static function stats(): array
+    {
+        $row = self::db()->query(
+            "SELECT
+                COUNT(*) AS total,
+                SUM(status = 'active') AS active,
+                SUM(status = 'inactive') AS inactive
+             FROM providers"
+        )->fetch();
+
+        return [
+            'total' => (int) ($row['total'] ?? 0),
+            'active' => (int) ($row['active'] ?? 0),
+            'inactive' => (int) ($row['inactive'] ?? 0),
+        ];
+    }
+
     public static function create(array $data): int
     {
         $stmt = self::db()->prepare(

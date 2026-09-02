@@ -149,6 +149,47 @@ class WhatsAppClient
         ]);
     }
 
+    /**
+     * A cheap, read-only Graph API call that confirms both the token is
+     * valid AND the configured phone_number_id is reachable with it. Only
+     * meant to be called on-demand from the admin health page — never in
+     * the hot inbound-message path.
+     *
+     * @return array{valid: bool, detail: string}
+     */
+    public function checkTokenValidity(): array
+    {
+        $url = "https://graph.facebook.com/v22.0/{$this->phoneNumberId}?fields=id,display_phone_number";
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => [
+                'Authorization: Bearer ' . $this->token,
+            ],
+            CURLOPT_TIMEOUT => 10,
+            CURLOPT_CONNECTTIMEOUT => 5,
+        ]);
+
+        $body = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err = curl_error($ch);
+        curl_close($ch);
+
+        if ($err) {
+            return ['valid' => false, 'detail' => "cURL error: {$err}"];
+        }
+
+        if ($httpCode !== 200) {
+            $decoded = json_decode((string) $body, true);
+            $detail = $decoded['error']['message'] ?? "HTTP {$httpCode}";
+
+            return ['valid' => false, 'detail' => $detail];
+        }
+
+        return ['valid' => true, 'detail' => 'OK'];
+    }
+
     private function send(array $payload): bool
     {
         $url = "https://graph.facebook.com/v22.0/{$this->phoneNumberId}/messages";

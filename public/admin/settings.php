@@ -13,6 +13,13 @@ $success = null;
 $accountError = null;
 $accountSuccess = null;
 $aiSuccess = null;
+$maintenanceSuccess = null;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_maintenance_setting') {
+    $enabled = ($_POST['maintenance_enabled'] ?? '0') === '1';
+    AppSetting::set('maintenance_enabled', $enabled ? '1' : '0');
+    $maintenanceSuccess = $enabled ? t('settings.maintenance_enabled_msg') : t('settings.maintenance_disabled_msg');
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_ai_setting') {
     $enabled = ($_POST['ai_enabled'] ?? '0') === '1';
@@ -69,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
 $gateways = PaymentGateway::all();
 $currentAdmin = Admin::find((int) Auth::user()['id']);
 $aiEnabled = AppSetting::isAiEnabled();
+$maintenanceEnabled = AppSetting::isMaintenanceEnabled();
 
 $pageTitle = t('settings.title');
 $activeNav = 'settings';
@@ -81,6 +89,27 @@ require __DIR__ . '/includes/layout_header.php';
 <?php if ($success !== null): ?>
     <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
 <?php endif; ?>
+
+<div class="card">
+    <h3 style="margin-top:0;"><?= t('settings.maintenance_title') ?> <span class="badge badge-<?= $maintenanceEnabled ? 'inactive' : 'active' ?>"><?= $maintenanceEnabled ? t('settings.maintenance_active') : t('settings.maintenance_inactive') ?></span></h3>
+    <?php if ($maintenanceSuccess !== null): ?>
+        <div class="alert alert-success"><?= htmlspecialchars($maintenanceSuccess) ?></div>
+    <?php endif; ?>
+    <p style="margin-top:-8px;color:var(--text-soft);font-size:13px;">
+        <?= t('settings.maintenance_hint') ?>
+    </p>
+    <form method="post">
+        <input type="hidden" name="action" value="update_maintenance_setting">
+        <div class="form-group">
+            <label><?= t('settings.status') ?></label>
+            <select name="maintenance_enabled">
+                <option value="1" <?= $maintenanceEnabled ? 'selected' : '' ?>><?= t('settings.maintenance_option_active') ?></option>
+                <option value="0" <?= !$maintenanceEnabled ? 'selected' : '' ?>><?= t('settings.maintenance_option_inactive') ?></option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary"><?= t('settings.save') ?></button>
+    </form>
+</div>
 
 <div class="card">
     <h3 style="margin-top:0;"><?= t('settings.ai_title') ?> <span class="badge badge-<?= $aiEnabled ? 'active' : 'inactive' ?>"><?= $aiEnabled ? t('settings.ai_active') : t('settings.ai_inactive') ?></span></h3>

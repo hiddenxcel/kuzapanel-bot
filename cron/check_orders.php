@@ -19,7 +19,29 @@ require_once __DIR__ . '/../app/helpers/BotLang.php';
 $config = require __DIR__ . '/../config/config.php';
 $whatsapp = new WhatsAppClient($config['whatsapp']);
 
-// Expire stale pending payments (USSD prompts that were never completed).
+// Cancel orders still waiting on a gateway payment after 15 minutes — the
+// customer likely never completed the USSD prompt. The order was recorded
+// up front (payment_status='pending') when payment was initiated, so it's
+// safe to cancel outright: no wallet debit has happened yet for it. Both
+// the order and its linked payment are marked, and the customer is told
+// by name/number so a stray "pesa imekatwa lakini oda haipo" report never
+// happens silently.
+$stalePendingOrders = Order::stalePendingPayment(15);
+foreach ($stalePendingOrders as $staleOrder) {
+    Order::updateStatus($staleOrder['id'], 'cancelled');
+    Payment::expirePendingForOrder((int) $staleOrder['id']);
+
+    $lang = BotLang::forCustomer(Customer::findByPhone($staleOrder['customer_phone']));
+    $whatsapp->sendText(
+        $staleOrder['customer_phone'],
+        BotLang::get($lang, 'order_payment_expired', ['{number}' => $staleOrder['id']])
+    );
+
+    echo "Order #{$staleOrder['id']}: cancelled — payment never completed.\n";
+}
+
+// Expire stale pending payments (standalone top-ups: USSD prompts that were
+// never completed, with no order attached to notify about).
 $expired = Payment::expireStalePending(60);
 if ($expired > 0) {
     echo "Expired {$expired} stale pending payment(s).\n";

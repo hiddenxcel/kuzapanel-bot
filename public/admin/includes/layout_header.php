@@ -289,6 +289,95 @@ Lang::load();
         .stat-card { transition: transform .2s ease, box-shadow .2s ease; }
         .stat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(15,23,42,0.08); }
 
+        /* ---- Mini stats (compact icon+number+label row, e.g. services/providers/health pages) ---- */
+        .mini-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .mini-stat { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; display: flex; align-items: center; gap: 12px; }
+        .mini-stat .icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+        .mini-stat .icon.total { background: var(--primary-soft); color: var(--primary); }
+        .mini-stat .icon.active { background: var(--green-soft); color: var(--green); }
+        .mini-stat .icon.inactive { background: var(--red-soft); color: var(--red); }
+        .mini-stat .icon.info,
+        .mini-stat .icon.platforms { background: var(--amber-soft); color: var(--amber); }
+        .mini-stat .num { font-size: 20px; font-weight: 800; line-height: 1.1; }
+        .mini-stat .lbl { font-size: 12px; color: var(--text-soft); font-weight: 600; }
+
+        /* ---- Toolbar (search + filters row) ---- */
+        .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 18px; }
+        .toolbar input[type=text], .toolbar select {
+            padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px;
+            font-size: 14px; font-family: inherit; background: #fcfcfe;
+        }
+        .toolbar input[type=text] { flex: 1; min-width: 180px; }
+        .toolbar .spacer { flex: 1; }
+
+        /* ---- Modal ---- */
+        .modal-backdrop {
+            position: fixed; inset: 0; background: rgba(15,23,42,0.55);
+            display: none; align-items: flex-start; justify-content: center;
+            z-index: 2000; padding: 40px 16px; overflow-y: auto;
+        }
+        .modal-backdrop.open { display: flex; }
+        .modal-box {
+            background: var(--card); border-radius: var(--radius); width: 100%; max-width: 640px;
+            box-shadow: 0 20px 60px rgba(15,23,42,0.25); animation: fadeInUp .25s ease;
+        }
+        .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid var(--border); }
+        .modal-head h3 { margin: 0; font-size: 17px; font-weight: 700; }
+        .modal-close { background: #f1f2f8; border: none; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; color: var(--text-soft); font-size: 14px; }
+        .modal-close:hover { background: var(--red-soft); color: var(--red); }
+        .modal-body { padding: 22px 24px; max-height: 70vh; overflow-y: auto; }
+        .modal-foot { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 10px; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+        .form-grid .form-group.full { grid-column: 1 / -1; }
+        @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+
+        /* ---- Item card grid (services/providers/etc.) ---- */
+        .item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+        .item-card {
+            background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px;
+            display: flex; flex-direction: column; gap: 8px; transition: box-shadow .15s ease, border-color .15s ease;
+            position: relative;
+        }
+        .item-card:hover { box-shadow: 0 4px 14px rgba(15,23,42,0.08); border-color: #d8dcf0; }
+        .item-card.selected { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-soft); }
+        .item-card.inactive { opacity: .62; }
+        .item-card-top { display: flex; align-items: flex-start; gap: 8px; }
+        .item-card-check { margin-top: 2px; flex-shrink: 0; width: 16px; height: 16px; cursor: pointer; }
+        .item-card-title { font-size: 13.5px; font-weight: 700; line-height: 1.35; flex: 1; word-break: break-word; }
+        .item-card-meta { display: flex; flex-wrap: wrap; gap: 6px; font-size: 11.5px; color: var(--text-soft); }
+        .item-card-meta span { background: #f5f6fb; padding: 2px 8px; border-radius: 6px; font-weight: 600; }
+        .item-card-price { font-size: 15px; font-weight: 800; color: var(--primary); }
+        .item-card-price small { font-size: 11px; color: var(--text-soft); font-weight: 600; }
+        .item-card-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 6px; }
+        .item-card-actions { display: flex; gap: 6px; }
+        .item-card-actions button, .item-card-actions a {
+            border: none; background: #f1f2f8; color: var(--text-soft); width: 28px; height: 28px;
+            border-radius: 7px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+            font-size: 12px; text-decoration: none;
+        }
+        .item-card-actions a:hover { background: var(--primary-soft); color: var(--primary); }
+        .item-card-actions .del:hover { background: var(--red-soft); color: var(--red); }
+        .item-card-actions button:disabled { opacity: .3; cursor: default; }
+
+        /* ---- Bulk action bar ---- */
+        .bulk-bar {
+            position: sticky; bottom: 14px; z-index: 50; margin-top: 16px;
+            background: var(--sidebar-bg); color: #fff; border-radius: 12px; padding: 12px 18px;
+            display: none; align-items: center; gap: 14px; flex-wrap: wrap;
+            box-shadow: 0 10px 30px rgba(15,23,42,0.3);
+        }
+        .bulk-bar.show { display: flex; }
+        .bulk-bar .count { font-weight: 700; font-size: 13.5px; }
+        .bulk-bar .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+        .bulk-bar button { border: none; padding: 8px 14px; border-radius: 8px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+        .bulk-bar .b-activate { background: var(--green-soft); color: var(--green); }
+        .bulk-bar .b-deactivate { background: var(--amber-soft); color: var(--amber); }
+        .bulk-bar .b-price { background: var(--primary-soft); color: var(--primary); }
+        .bulk-bar .b-delete { background: var(--red-soft); color: var(--red); }
+        .bulk-bar .b-clear { background: rgba(255,255,255,0.12); color: #fff; }
+
+        #noResultsMsg { display: none; color: var(--text-soft); text-align: center; padding: 30px 0; }
+
         /* ════════════════════════════════════════════
            RESPONSIVE — Tablet & Mobile
            ════════════════════════════════════════════ */
@@ -350,6 +439,8 @@ Lang::load();
             <a href="orders.php" class="<?= $activeNav === 'orders' ? 'active' : '' ?>"><i class="fa-solid fa-receipt"></i> <?= t('nav.orders') ?></a>
             <a href="customers.php" class="<?= $activeNav === 'customers' ? 'active' : '' ?>"><i class="fa-solid fa-users"></i> <?= t('nav.customers') ?></a>
             <a href="inbox.php" class="<?= $activeNav === 'inbox' ? 'active' : '' ?>"><i class="fa-solid fa-comments"></i> <?= t('nav.inbox') ?></a>
+            <a href="sessions.php" class="<?= $activeNav === 'sessions' ? 'active' : '' ?>"><i class="fa-solid fa-user-clock"></i> <?= t('nav.sessions') ?></a>
+            <a href="health.php" class="<?= $activeNav === 'health' ? 'active' : '' ?>"><i class="fa-solid fa-heart-pulse"></i> <?= t('nav.health') ?></a>
             <a href="broadcast.php" class="<?= $activeNav === 'broadcast' ? 'active' : '' ?>"><i class="fa-solid fa-bullhorn"></i> <?= t('nav.broadcast') ?></a>
             <a href="reports.php" class="<?= $activeNav === 'reports' ? 'active' : '' ?>"><i class="fa-solid fa-chart-line"></i> <?= t('nav.reports') ?></a>
             <a href="providers.php" class="<?= $activeNav === 'providers' ? 'active' : '' ?>"><i class="fa-solid fa-server"></i> <?= t('nav.providers') ?></a>

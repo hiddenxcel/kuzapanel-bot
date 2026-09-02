@@ -53,53 +53,6 @@ require __DIR__ . '/includes/layout_header.php';
     <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
 <?php endif; ?>
 
-<?php if ($adjusting !== null): ?>
-<div class="card">
-    <h3 style="margin-top:0;">💰 <?= t('customers.adjust_balance_title') ?> — <?= htmlspecialchars($adjusting['name'] ?: $adjusting['phone']) ?></h3>
-    <p style="margin-top:-8px;color:var(--text-soft);font-size:13px;">
-        <?= t('customers.current_balance') ?> <strong style="color:var(--text);"><?= number_format((float) $adjusting['balance'], 2) ?> TZS</strong>
-    </p>
-    <form method="post" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
-        <input type="hidden" name="action" value="adjust_balance">
-        <input type="hidden" name="id" value="<?= $adjusting['id'] ?>">
-        <div class="form-group" style="margin-bottom:0;width:160px;">
-            <label><?= t('customers.type') ?></label>
-            <select name="direction">
-                <option value="credit"><?= t('customers.credit') ?></option>
-                <option value="debit"><?= t('customers.debit') ?></option>
-            </select>
-        </div>
-        <div class="form-group" style="margin-bottom:0;width:160px;">
-            <label><?= t('customers.amount') ?></label>
-            <input type="number" name="amount" min="1" step="0.01" required>
-        </div>
-        <div class="form-group" style="margin-bottom:0;flex:1;min-width:220px;">
-            <label><?= t('customers.note_optional') ?></label>
-            <input type="text" name="note" placeholder="<?= t('customers.note_placeholder') ?>">
-        </div>
-        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> <?= t('customers.execute') ?></button>
-        <a href="customers.php" class="btn btn-secondary"><?= t('customers.cancel') ?></a>
-    </form>
-
-    <?php if ($adjustingHistory !== []): ?>
-    <h3 style="margin-top:22px;font-size:14px;"><?= t('customers.recent_adjustments') ?></h3>
-    <table>
-        <tr><th><?= t('customers.col_amount') ?></th><th><?= t('customers.col_note') ?></th><th><?= t('customers.col_admin') ?></th><th><?= t('customers.col_date') ?></th></tr>
-        <?php foreach ($adjustingHistory as $h): ?>
-        <tr>
-            <td style="color:<?= $h['amount'] >= 0 ? 'var(--green)' : 'var(--red)' ?>;font-weight:700;">
-                <?= $h['amount'] >= 0 ? '+' : '' ?><?= number_format((float) $h['amount'], 2) ?>
-            </td>
-            <td><?= htmlspecialchars($h['note'] ?: '—') ?></td>
-            <td><?= htmlspecialchars($h['admin_username'] ?? '—') ?></td>
-            <td style="white-space:nowrap;color:var(--text-soft);font-size:12.5px;"><?= htmlspecialchars($h['created_at']) ?></td>
-        </tr>
-        <?php endforeach; ?>
-    </table>
-    <?php endif; ?>
-</div>
-<?php endif; ?>
-
 <div class="card">
     <form method="get" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
         <div class="form-group" style="margin-bottom:0;flex:1;min-width:220px;">
@@ -131,7 +84,7 @@ require __DIR__ . '/includes/layout_header.php';
             <td style="white-space:nowrap;color:var(--text-soft);font-size:12.5px;"><?= htmlspecialchars($c['created_at']) ?></td>
             <td style="white-space:nowrap;">
                 <a href="orders.php?q=<?= urlencode($c['phone']) ?>" class="btn btn-secondary"><?= t('customers.orders_btn') ?></a>
-                <a href="customers.php?adjust=<?= $c['id'] ?>" class="btn btn-secondary"><i class="fa-solid fa-coins"></i> <?= t('customers.balance_btn') ?></a>
+                <a href="#" class="btn btn-secondary balance-btn" data-id="<?= $c['id'] ?>" data-name="<?= htmlspecialchars($c['name'] ?: $c['phone']) ?>" data-balance="<?= number_format((float) $c['balance'], 2) ?>"><i class="fa-solid fa-coins"></i> <?= t('customers.balance_btn') ?></a>
             </td>
         </tr>
         <?php endforeach; ?>
@@ -154,5 +107,94 @@ require __DIR__ . '/includes/layout_header.php';
     </div>
     <?php endif; ?>
 </div>
+
+<!-- ==== Balance adjustment modal ==== -->
+<div class="modal-backdrop" id="balanceModal">
+    <div class="modal-box" style="max-width:520px;">
+        <div class="modal-head">
+            <h3 id="balanceModalTitle">💰 <?= t('customers.adjust_balance_title') ?></h3>
+            <button type="button" class="modal-close" id="balanceModalCloseBtn"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body">
+            <p id="balanceModalBalance" style="margin-top:-8px;color:var(--text-soft);font-size:13px;"></p>
+            <form method="post" id="balanceForm">
+                <input type="hidden" name="action" value="adjust_balance">
+                <input type="hidden" name="id" id="balanceFormId" value="">
+                <div class="form-group">
+                    <label><?= t('customers.type') ?></label>
+                    <select name="direction">
+                        <option value="credit"><?= t('customers.credit') ?></option>
+                        <option value="debit"><?= t('customers.debit') ?></option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label><?= t('customers.amount') ?></label>
+                    <input type="number" name="amount" min="1" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label><?= t('customers.note_optional') ?></label>
+                    <input type="text" name="note" placeholder="<?= t('customers.note_placeholder') ?>">
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> <?= t('customers.execute') ?></button>
+            </form>
+
+            <?php if ($adjusting !== null && $adjustingHistory !== []): ?>
+            <h3 style="margin-top:22px;font-size:14px;"><?= t('customers.recent_adjustments') ?></h3>
+            <table>
+                <tr><th><?= t('customers.col_amount') ?></th><th><?= t('customers.col_note') ?></th><th><?= t('customers.col_admin') ?></th><th><?= t('customers.col_date') ?></th></tr>
+                <?php foreach ($adjustingHistory as $h): ?>
+                <tr>
+                    <td style="color:<?= $h['amount'] >= 0 ? 'var(--green)' : 'var(--red)' ?>;font-weight:700;">
+                        <?= $h['amount'] >= 0 ? '+' : '' ?><?= number_format((float) $h['amount'], 2) ?>
+                    </td>
+                    <td><?= htmlspecialchars($h['note'] ?: '—') ?></td>
+                    <td><?= htmlspecialchars($h['admin_username'] ?? '—') ?></td>
+                    <td style="white-space:nowrap;color:var(--text-soft);font-size:12.5px;"><?= htmlspecialchars($h['created_at']) ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </table>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var modal = document.getElementById('balanceModal');
+    var title = document.getElementById('balanceModalTitle');
+    var balanceLine = document.getElementById('balanceModalBalance');
+    var formId = document.getElementById('balanceFormId');
+
+    function openFor(id, name, balance) {
+        title.textContent = '💰 ' + <?= json_encode(t('customers.adjust_balance_title')) ?> + ' — ' + name;
+        balanceLine.textContent = <?= json_encode(t('customers.current_balance')) ?> + ' ' + balance + ' TZS';
+        formId.value = id;
+        modal.classList.add('open');
+    }
+
+    document.querySelectorAll('.balance-btn').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            openFor(btn.dataset.id, btn.dataset.name, btn.dataset.balance);
+        });
+    });
+
+    document.getElementById('balanceModalCloseBtn').addEventListener('click', function () { modal.classList.remove('open'); });
+    modal.addEventListener('click', function (e) {
+        if (e.target === modal) modal.classList.remove('open');
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') modal.classList.remove('open');
+    });
+
+    <?php if ($adjusting !== null): ?>
+    openFor(
+        <?= json_encode((string) $adjusting['id']) ?>,
+        <?= json_encode($adjusting['name'] ?: $adjusting['phone']) ?>,
+        <?= json_encode(number_format((float) $adjusting['balance'], 2)) ?>
+    );
+    <?php endif; ?>
+})();
+</script>
 
 <?php require __DIR__ . '/includes/layout_footer.php'; ?>

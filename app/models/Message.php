@@ -69,4 +69,29 @@ class Message extends BaseModel
 
         return $stmt->fetchAll();
     }
+
+    /** Count of messages on a given date (Y-m-d), optionally filtered by direction ('in'/'out'). */
+    public static function countForDate(string $date, ?string $direction = null): int
+    {
+        if ($direction === null) {
+            $stmt = self::db()->prepare('SELECT COUNT(*) FROM messages WHERE DATE(created_at) = ?');
+            $stmt->execute([$date]);
+
+            return (int) $stmt->fetchColumn();
+        }
+
+        $stmt = self::db()->prepare('SELECT COUNT(*) FROM messages WHERE DATE(created_at) = ? AND direction = ?');
+        $stmt->execute([$date, $direction]);
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    /** Timestamp of the most recent inbound (customer) message, system-wide — a bot-health signal. */
+    public static function lastInboundAt(): ?string
+    {
+        $stmt = self::db()->query("SELECT MAX(created_at) FROM messages WHERE direction = 'in'");
+        $value = $stmt->fetchColumn();
+
+        return $value !== false ? $value : null;
+    }
 }

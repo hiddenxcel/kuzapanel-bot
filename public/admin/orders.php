@@ -50,34 +50,25 @@ require __DIR__ . '/includes/layout_header.php';
     <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
 <?php endif; ?>
 
-<div class="card">
-    <form method="get" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
-        <div class="form-group" style="margin-bottom:0;flex:1;min-width:200px;">
-            <label><?= t('orders.search_label') ?></label>
-            <input type="text" name="q" value="<?= htmlspecialchars($filters['q']) ?>" placeholder="mfano: 255712345678">
-        </div>
-        <div class="form-group" style="margin-bottom:0;width:170px;">
-            <label><?= t('orders.order_status') ?></label>
-            <select name="status">
-                <option value=""><?= t('orders.all') ?></option>
-                <?php foreach ($statusOptions as $opt): ?>
-                    <option value="<?= $opt ?>" <?= $filters['status'] === $opt ? 'selected' : '' ?>><?= ucfirst($opt) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <div class="form-group" style="margin-bottom:0;width:170px;">
-            <label><?= t('orders.payment') ?></label>
-            <select name="payment_status">
-                <option value=""><?= t('orders.all') ?></option>
-                <?php foreach ($paymentOptions as $opt): ?>
-                    <option value="<?= $opt ?>" <?= $filters['payment_status'] === $opt ? 'selected' : '' ?>><?= ucfirst($opt) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-magnifying-glass"></i> <?= t('orders.filter') ?></button>
+<form method="get" class="toolbar">
+    <input type="text" name="q" value="<?= htmlspecialchars($filters['q']) ?>" placeholder="<?= t('orders.search_label') ?>">
+    <select name="status">
+        <option value=""><?= t('orders.order_status') ?>: <?= t('orders.all') ?></option>
+        <?php foreach ($statusOptions as $opt): ?>
+            <option value="<?= $opt ?>" <?= $filters['status'] === $opt ? 'selected' : '' ?>><?= ucfirst($opt) ?></option>
+        <?php endforeach; ?>
+    </select>
+    <select name="payment_status">
+        <option value=""><?= t('orders.payment') ?>: <?= t('orders.all') ?></option>
+        <?php foreach ($paymentOptions as $opt): ?>
+            <option value="<?= $opt ?>" <?= $filters['payment_status'] === $opt ? 'selected' : '' ?>><?= ucfirst($opt) ?></option>
+        <?php endforeach; ?>
+    </select>
+    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-magnifying-glass"></i> <?= t('orders.filter') ?></button>
+    <?php if ($filters['q'] !== '' || $filters['status'] !== '' || $filters['payment_status'] !== ''): ?>
         <a href="orders.php" class="btn btn-secondary"><?= t('orders.clear_filters') ?></a>
-    </form>
-</div>
+    <?php endif; ?>
+</form>
 
 <div class="card">
     <h3 style="margin-top:0;"><?= t('orders.list_title') ?> <span style="color:var(--text-soft);font-weight:500;font-size:13px;">(<?= $result['total'] ?> <?= t('orders.total_suffix') ?>)</span></h3>

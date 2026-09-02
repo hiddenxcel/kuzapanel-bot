@@ -30,4 +30,14 @@ class AppSetting extends BaseModel
     {
         return self::get('ai_enabled', '1') === '1';
     }
+
+    /**
+     * Defaults to false (not in maintenance) if the setting has never been
+     * saved, so existing bot behavior is unaffected until an admin
+     * explicitly turns maintenance mode on.
+     */
+    public static function isMaintenanceEnabled(): bool
+    {
+        return self::get('maintenance_enabled', '0') === '1';
+    }
 }

@@ -53,7 +53,7 @@ class WalletTopupHandler
 
         $this->payReferralBonus($customer, (float) $payment['amount']);
 
-        $this->tryCompletePendingOrder($customer);
+        $this->tryCompletePendingOrder($customer, $payment);
     }
 
     /**
@@ -95,38 +95,47 @@ class WalletTopupHandler
         );
     }
 
-    private function tryCompletePendingOrder(array $customer): void
+    /**
+     * If this payment was for an order (order_id set — see
+     * WebhookController::initiatePayment, which records the order up front,
+     * before the gateway is even called), complete THAT order now.
+     *
+     * This deliberately does not look at the customer's conversation session:
+     * a stray "#", a session timeout, or simply messaging support while
+     * waiting for the USSD prompt would otherwise wipe the pending-order
+     * context and leave the wallet credited with no order ever placed. The
+     * order row itself — not the session — is the source of truth for what
+     * the customer paid for.
+     */
+    private function tryCompletePendingOrder(array $customer, array $payment): void
     {
-        $session = Session::findByPhone($customer['phone']);
-
-        if ($session === null || $session['state'] !== 'AWAITING_TOPUP_CONFIRMATION') {
+        if ($payment['order_id'] === null) {
             return;
         }
 
-        $data = $session['temp_data'];
+        $order = Order::find((int) $payment['order_id']);
+
+        // Already resolved (paid by another route, or expired/cancelled by
+        // the stale-payment cron) — nothing to complete.
+        if ($order === null || $order['payment_status'] !== 'pending') {
+            return;
+        }
+
         $freshCustomer = Customer::find((int) $customer['id']);
 
-        if ($freshCustomer === null || (float) $freshCustomer['balance'] < (float) $data['amount']) {
+        if ($freshCustomer === null || (float) $freshCustomer['balance'] < (float) $order['amount']) {
             return;
         }
 
-        if (!Customer::debit((int) $freshCustomer['id'], (float) $data['amount'])) {
+        if (!Customer::debit((int) $freshCustomer['id'], (float) $order['amount'])) {
             return;
         }
 
-        $orderId = Order::create([
-            'customer_phone' => $customer['phone'],
-            'service_id' => $data['service_id'],
-            'quantity' => $data['quantity'],
-            'link' => $data['link'],
-            'amount' => $data['amount'],
-        ]);
+        Order::markPaid((int) $order['id'], 'wallet');
+        OrderFulfillment::submit((int) $order['id']);
 
-        Order::markPaid($orderId, 'wallet');
-        OrderFulfillment::submit($orderId);
-
-        $order = Order::find($orderId);
-        $service = Service::find($data['service_id']);
+        $order = Order::find((int) $order['id']);
+        $service = Service::find($order['service_id']);
         if ($order !== null && $service !== null) {
             $this->admin->newOrder($order, $service, $customer);
         }
@@ -135,7 +144,7 @@ class WalletTopupHandler
 
         // Show the provider's order number; fall back to our internal id only
         // if the order hasn't reached the provider yet (so it's never blank).
-        $orderNumber = !empty($order['provider_order_id']) ? $order['provider_order_id'] : $orderId;
+        $orderNumber = !empty($order['provider_order_id']) ? $order['provider_order_id'] : $order['id'];
         $providerOrderLine = BotLang::get($lang, 'order_provider_line', ['{provider}' => $orderNumber]);
 
         $this->whatsapp->sendText(
@@ -145,7 +154,14 @@ class WalletTopupHandler
             ])
         );
 
-        Session::reset($customer['phone']);
-        MainMenu::send($this->whatsapp, $customer['phone'], $customer['name'] ?? null, $lang);
+        // Only clear the session if it's still sitting on this same payment —
+        // the customer may have already moved on to something else, and that
+        // in-progress state (e.g. a NEW order they started) must not be wiped.
+        $session = Session::findByPhone($customer['phone']);
+        if ($session !== null && $session['state'] === 'AWAITING_TOPUP_CONFIRMATION'
+            && ($session['temp_data']['order_id'] ?? null) === $order['id']) {
+            Session::reset($customer['phone']);
+            MainMenu::send($this->whatsapp, $customer['phone'], $customer['name'] ?? null, $lang);
+        }
     }
 }

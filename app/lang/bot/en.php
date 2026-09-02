@@ -57,6 +57,11 @@ return [
     'menu_website_title' => '🌐 KuzaPanel Website',
     'menu_website_desc' => 'More services online',
 
+    // Maintenance mode.
+    'maintenance_message' => "🛠️ *UNDER MAINTENANCE*\n\n" .
+        "Sorry, our service is currently undergoing brief maintenance. Please try again later.\n\n" .
+        "Thanks for your patience! 🙏",
+
     // Session expiry.
     'session_expired' => "⏰ Your session timed out due to inactivity.\n\nNo worries — let's start fresh! 👇",
     'awaiting_topup_confirmation' => "⏳ *WAITING FOR YOUR PAYMENT*\n\n" .
@@ -76,6 +81,9 @@ return [
     'topup_session_expired' => "⏰ *PAYMENT TIMED OUT*\n\n" .
         "We didn't receive confirmation of your payment in time. No money was charged.\n\n" .
         "If you'd still like to top up or place an order, let's start fresh 👇",
+    'order_payment_expired' => "⏰ *ORDER #{number} CANCELLED*\n\n" .
+        "The order you were placing was cancelled because payment wasn't completed in time.\n\n" .
+        "No money was charged. Send \"#\" to start a new order anytime.",
 
     // Language settings.
     'settings_choose_language' => "🌐 *CHOOSE LANGUAGE*\n\nWhich language would you like to use?",

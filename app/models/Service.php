@@ -124,6 +124,26 @@ class Service extends BaseModel
         return $stmt->fetchAll();
     }
 
+    /** Summary counts for the admin page's stat row. */
+    public static function stats(): array
+    {
+        $row = self::db()->query(
+            "SELECT
+                COUNT(*) AS total,
+                SUM(status = 'active') AS active,
+                SUM(status = 'inactive') AS inactive,
+                COUNT(DISTINCT platform) AS platforms
+             FROM services"
+        )->fetch();
+
+        return [
+            'total' => (int) ($row['total'] ?? 0),
+            'active' => (int) ($row['active'] ?? 0),
+            'inactive' => (int) ($row['inactive'] ?? 0),
+            'platforms' => (int) ($row['platforms'] ?? 0),
+        ];
+    }
+
     /**
      * Swap sort_order with the previous service in the same platform group.
      */
@@ -243,5 +263,56 @@ class Service extends BaseModel
         $stmt = self::db()->prepare('DELETE FROM services WHERE id = ?');
 
         return $stmt->execute([$id]);
+    }
+
+    /** @param int[] $ids */
+    public static function bulkSetStatus(array $ids, string $status): int
+    {
+        if ($ids === []) {
+            return 0;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = self::db()->prepare("UPDATE services SET status = ? WHERE id IN ($placeholders)");
+        $stmt->execute([$status, ...$ids]);
+
+        return $stmt->rowCount();
+    }
+
+    /** @param int[] $ids */
+    public static function bulkDelete(array $ids): int
+    {
+        if ($ids === []) {
+            return 0;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = self::db()->prepare("DELETE FROM services WHERE id IN ($placeholders)");
+        $stmt->execute($ids);
+
+        return $stmt->rowCount();
+    }
+
+    /**
+     * Adjust my_price for the given services by a percentage (positive to
+     * raise, negative to lower). cost_price is untouched — this only moves
+     * the customer-facing price.
+     *
+     * @param int[] $ids
+     */
+    public static function bulkAdjustPrice(array $ids, float $percent): int
+    {
+        if ($ids === []) {
+            return 0;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $multiplier = 1 + ($percent / 100);
+        $stmt = self::db()->prepare(
+            "UPDATE services SET my_price = ROUND(my_price * ?, 4) WHERE id IN ($placeholders)"
+        );
+        $stmt->execute([$multiplier, ...$ids]);
+
+        return $stmt->rowCount();
     }
 }

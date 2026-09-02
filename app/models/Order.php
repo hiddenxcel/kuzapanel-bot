@@ -38,6 +38,24 @@ class Order extends BaseModel
     }
 
     /**
+     * Orders still waiting on a gateway payment (payment_status='pending')
+     * that have sat unpaid for at least $minutes — the customer likely never
+     * completed the USSD prompt. Excludes orders already cancelled, so the
+     * cron that expires these doesn't keep re-selecting the same rows.
+     */
+    public static function stalePendingPayment(int $minutes): array
+    {
+        $stmt = self::db()->prepare(
+            "SELECT * FROM orders
+             WHERE payment_status = 'pending' AND status <> 'cancelled'
+               AND TIMESTAMPDIFF(MINUTE, created_at, NOW()) >= ?"
+        );
+        $stmt->execute([$minutes]);
+
+        return $stmt->fetchAll();
+    }
+
+    /**
      * Paginated, searchable, filterable order list for the admin panel.
      * Joins customer name and service name/platform for display.
      */

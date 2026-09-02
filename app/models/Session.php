@@ -115,4 +115,25 @@ class Session extends BaseModel
 
         return $stmt->fetchAll();
     }
+
+    /**
+     * Every session currently mid-conversation (any non-IDLE state),
+     * regardless of how long it's been idle — for the admin "session viewer"
+     * page. Unlike expiredSessions()/expiredTopupSessions(), this has no
+     * minimum-idle-time filter: it's "who is active right now", not "who has
+     * been stuck for a while".
+     */
+    public static function allActive(): array
+    {
+        $stmt = self::db()->query(
+            "SELECT s.*, c.name AS customer_name,
+                    TIMESTAMPDIFF(MINUTE, s.updated_at, NOW()) AS idle_minutes
+             FROM sessions s
+             LEFT JOIN customers c ON c.phone = s.customer_phone
+             WHERE s.state <> 'IDLE'
+             ORDER BY s.updated_at DESC"
+        );
+
+        return $stmt->fetchAll();
+    }
 }

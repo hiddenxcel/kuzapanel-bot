@@ -97,6 +97,17 @@ class Payment extends BaseModel
         return $stmt->rowCount();
     }
 
+    /** Mark any still-pending payments for an order as failed, alongside cancelling the order itself. */
+    public static function expirePendingForOrder(int $orderId): int
+    {
+        $stmt = self::db()->prepare(
+            "UPDATE payments SET status = 'failed' WHERE order_id = ? AND status = 'pending'"
+        );
+        $stmt->execute([$orderId]);
+
+        return $stmt->rowCount();
+    }
+
     public static function pendingByGateway(string $gateway, int $maxAgeMinutes = 60): array
     {
         $stmt = self::db()->prepare(

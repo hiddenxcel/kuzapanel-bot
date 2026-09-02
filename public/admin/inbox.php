@@ -8,6 +8,7 @@ require_once __DIR__ . '/../../app/models/Customer.php';
 Auth::requireLogin();
 
 $customers = Message::recentCustomers();
+$messagesToday = Message::countForDate(date('Y-m-d'));
 
 $activePhone = trim($_GET['phone'] ?? '');
 $activeCustomer = null;
@@ -224,6 +225,11 @@ $activeDisplay = $activeName !== '' ? $activeName : $activePhone;
         .msg-bubble { max-width: 82%; }
     }
 </style>
+
+<div class="mini-stats">
+    <div class="mini-stat"><div class="icon total"><i class="fa-solid fa-users"></i></div><div><div class="num"><?= count($customers) ?></div><div class="lbl"><?= t('inbox.conversations') ?></div></div></div>
+    <div class="mini-stat"><div class="icon active"><i class="fa-solid fa-comment"></i></div><div><div class="num"><?= $messagesToday ?></div><div class="lbl"><?= t('health.messages_today_label') ?></div></div></div>
+</div>
 
 <div class="inbox-wrap" data-view="<?= $hasActive ? 'thread' : 'list' ?>">
     <div class="inbox-list">

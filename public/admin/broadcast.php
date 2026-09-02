@@ -58,13 +58,21 @@ require __DIR__ . '/includes/layout_header.php';
     <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
 <?php endif; ?>
 
+<div class="mini-stats">
+    <div class="mini-stat"><div class="icon active"><i class="fa-solid fa-user-check"></i></div><div><div class="num"><?= count($activeCustomers) ?></div><div class="lbl"><?= t('broadcast.active_now') ?></div></div></div>
+    <div class="mini-stat"><div class="icon total"><i class="fa-solid fa-bullhorn"></i></div><div><div class="num"><?= count($history) ?></div><div class="lbl"><?= t('broadcast.history') ?></div></div></div>
+</div>
+
 <div class="card">
     <h3 style="margin-top:0;"><?= t('broadcast.send_title') ?></h3>
-    <p style="margin-top:-8px;color:var(--text-soft);font-size:13px;">
-        ⚠️ <?= t('broadcast.window_notice_1') ?> <strong><?= t('broadcast.window_notice_2') ?></strong><?= t('broadcast.window_notice_3') ?>
-        <strong style="color:var(--text);"><?= count($activeCustomers) ?> <?= t('broadcast.window_notice_4') ?></strong>.
-        <?= t('broadcast.window_notice_5') ?>
-    </p>
+    <div class="alert" style="background:var(--amber-soft);color:var(--amber);">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>
+            <?= t('broadcast.window_notice_1') ?> <strong><?= t('broadcast.window_notice_2') ?></strong><?= t('broadcast.window_notice_3') ?>
+            <strong><?= count($activeCustomers) ?> <?= t('broadcast.window_notice_4') ?></strong>.
+            <?= t('broadcast.window_notice_5') ?>
+        </span>
+    </div>
     <form method="post">
         <input type="hidden" name="action" value="send_broadcast">
         <div class="form-group">

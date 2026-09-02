@@ -85,6 +85,16 @@ class WebhookController
 
         $this->logIncomingMessage($phone, $message);
 
+        // Maintenance mode: reply with a single notice and stop — no read
+        // receipt/typing indicator, no session/state-machine work at all.
+        // Checked after logging so the inbound message still shows up in the
+        // admin inbox/history.
+        if (AppSetting::isMaintenanceEnabled()) {
+            $this->whatsapp->sendText($phone, $this->t($phone, 'maintenance_message'));
+
+            return;
+        }
+
         // Mark the incoming message as read (blue ticks) and show "typing…".
         if (!empty($message['message_id'])) {
             $this->whatsapp->markReadWithTyping($message['message_id']);
@@ -670,6 +680,12 @@ class WebhookController
             $choice = substr($message['id'], strlen('topup_wait:'));
 
             if ($choice === 'cancel') {
+                $orderId = $session['temp_data']['order_id'] ?? null;
+                if ($orderId !== null) {
+                    Order::updateStatus($orderId, 'cancelled');
+                    Payment::expirePendingForOrder($orderId);
+                }
+
                 $this->whatsapp->sendText($phone, $this->t($phone, 'payment_cancelled'));
                 Session::reset($phone);
 
@@ -677,8 +693,10 @@ class WebhookController
             }
 
             if ($choice === 'resend') {
-                // Re-pick the payment phone, then re-initiate. The stale pending
-                // payment is left to expire on its own (check_orders cron, 60 min).
+                // Re-pick the payment phone, then re-initiate against the SAME
+                // pending order (temp_data still carries its order_id) — this
+                // does not create a second order. The stale pending payment
+                // record is left to expire on its own (check_orders cron).
                 $this->sendPhoneChoice($phone, $session['temp_data']);
 
                 return;
@@ -745,8 +763,31 @@ class WebhookController
         $localRef = 'KZPTOP' . $customer['id'] . time();
         $webhookBase = rtrim($this->config['app']['url'], '/');
 
+        // Order top-up: the order is recorded now, before the gateway is even
+        // called, with payment_status still 'pending'. The webhook completes
+        // THIS row when payment confirms — it no longer depends on the
+        // customer's conversation state, which can be reset by a stray "#"
+        // or a session timeout while the USSD prompt is still pending. Without
+        // this, a late webhook credited the wallet but silently dropped the
+        // order the customer paid for.
+        //
+        // A "resend USSD" re-enters this method with the same order_id already
+        // in $data (see handleTopupConfirmation) — that existing pending order
+        // is reused rather than creating a duplicate on every resend.
+        $orderId = $data['order_id'] ?? null;
+        if (!$isStandalone && $orderId === null) {
+            $orderId = Order::create([
+                'customer_phone' => $phone,
+                'service_id' => $data['service_id'],
+                'quantity' => $data['quantity'],
+                'link' => $data['link'],
+                'amount' => $data['amount'],
+            ]);
+        }
+
         $paymentId = Payment::create([
             'type' => 'wallet_topup',
+            'order_id' => $orderId,
             'customer_id' => $customer['id'],
             'gateway' => $gateway,
             'transaction_ref' => $localRef,
@@ -780,6 +821,10 @@ class WebhookController
         };
 
         if (!$result['success']) {
+            if ($orderId !== null) {
+                Order::updateStatus($orderId, 'cancelled');
+            }
+
             $this->whatsapp->sendText($phone, $this->t($phone, 'payment_failed', ['{message}' => $result['message']]));
             Session::reset($phone);
 
@@ -827,7 +872,7 @@ class WebhookController
             ]
         );
 
-        Session::updateState($phone, 'AWAITING_TOPUP_CONFIRMATION', $data);
+        Session::updateState($phone, 'AWAITING_TOPUP_CONFIRMATION', $data + ['order_id' => $orderId]);
     }
 
     private const PLATFORM_INFO = [

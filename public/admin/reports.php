@@ -31,26 +31,34 @@ function fmt(float $n): string
 }
 ?>
 
+<style>
+    .rpt-stat-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: 0 1px 2px rgba(15,23,42,0.04); transition: transform .2s ease, box-shadow .2s ease; }
+    .rpt-stat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(15,23,42,0.08); }
+    .rpt-stat-card .label { font-size: 12.5px; color: var(--text-soft); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+    .rpt-stat-card .value { font-size: 26px; font-weight: 800; margin-top: 6px; letter-spacing: -0.02em; }
+    .rpt-stat-card .profit-line { font-size: 12.5px; color: var(--green); font-weight: 600; margin-top: 6px; }
+</style>
+
 <div class="stat-grid">
-    <div class="stat-card">
+    <div class="rpt-stat-card">
         <div class="label"><?= t('reports.sales_today') ?></div>
-        <div class="value"><?= number_format($todayStats['revenue'], 0) ?></div>
-        <div class="label"><?= t('reports.profit') ?> <?= fmt($todayStats['profit']) ?></div>
+        <div class="value"><?= number_format($todayStats['revenue'], 0) ?> TZS</div>
+        <div class="profit-line"><?= t('reports.profit') ?>: <?= fmt($todayStats['profit']) ?></div>
     </div>
-    <div class="stat-card">
+    <div class="rpt-stat-card">
         <div class="label"><?= t('reports.sales_yesterday') ?></div>
-        <div class="value"><?= number_format($yesterdayStats['revenue'], 0) ?></div>
-        <div class="label"><?= t('reports.profit') ?> <?= fmt($yesterdayStats['profit']) ?></div>
+        <div class="value"><?= number_format($yesterdayStats['revenue'], 0) ?> TZS</div>
+        <div class="profit-line"><?= t('reports.profit') ?>: <?= fmt($yesterdayStats['profit']) ?></div>
     </div>
-    <div class="stat-card">
+    <div class="rpt-stat-card">
         <div class="label"><?= t('reports.sales_week') ?></div>
-        <div class="value"><?= number_format($weekStats['revenue'], 0) ?></div>
-        <div class="label"><?= t('reports.profit') ?> <?= fmt($weekStats['profit']) ?></div>
+        <div class="value"><?= number_format($weekStats['revenue'], 0) ?> TZS</div>
+        <div class="profit-line"><?= t('reports.profit') ?>: <?= fmt($weekStats['profit']) ?></div>
     </div>
-    <div class="stat-card">
+    <div class="rpt-stat-card">
         <div class="label"><?= t('reports.sales_month') ?></div>
-        <div class="value"><?= number_format($monthStats['revenue'], 0) ?></div>
-        <div class="label"><?= t('reports.profit') ?> <?= fmt($monthStats['profit']) ?></div>
+        <div class="value"><?= number_format($monthStats['revenue'], 0) ?> TZS</div>
+        <div class="profit-line"><?= t('reports.profit') ?>: <?= fmt($monthStats['profit']) ?></div>
     </div>
 </div>
 

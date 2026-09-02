@@ -57,6 +57,11 @@ return [
     'menu_website_title' => '🌐 KuzaPanel Website',
     'menu_website_desc' => 'Huduma zaidi mtandaoni',
 
+    // Maintenance mode.
+    'maintenance_message' => "🛠️ *TUNAFANYIWA MATENGENEZO*\n\n" .
+        "Samahani, huduma zetu kwa sasa zinafanyiwa matengenezo kidogo. Tafadhali jaribu tena baadaye.\n\n" .
+        "Asante kwa uvumilivu wako! 🙏",
+
     // Session expiry.
     'session_expired' => "⏰ Muda wa mazungumzo yako umepita kwa kukaa kimya.\n\nHakuna wasiwasi — tunaanza upya! 👇",
     'awaiting_topup_confirmation' => "⏳ *TUNASUBIRI MALIPO YAKO*\n\n" .
@@ -76,6 +81,9 @@ return [
     'topup_session_expired' => "⏰ *MUDA WA MALIPO UMEPITA*\n\n" .
         "Hatukupokea uthibitisho wa malipo yako kwa muda. Hakuna pesa iliyokatwa.\n\n" .
         "Kama bado unataka kuweka pesa au kuagiza, tunaanza upya 👇",
+    'order_payment_expired' => "⏰ *ODA #{number} IMEGHAIRIWA*\n\n" .
+        "Oda uliyokuwa ukiitengeneza imeghairiwa kwa sababu hukukamilisha malipo kwa wakati.\n\n" .
+        "Hakuna pesa iliyokatwa. Tuma \"#\" kuanzisha oda mpya wakati wowote.",
 
     // Language settings.
     'settings_choose_language' => "🌐 *CHAGUA LUGHA*\n\nUnataka kutumia lugha gani?",
