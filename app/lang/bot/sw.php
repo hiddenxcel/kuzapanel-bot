@@ -104,7 +104,7 @@ return [
     'settings_press_currency' => "⚠️ Tafadhali bonyeza currency moja hapo juu 👆\n\n_Tuma \"#\" kurudi menu kuu_",
 
     // Wallet top-up gateway choice.
-    'gateway_choice_menu' => "💰 *WEKA PESA*\n\nUnahitaji kuweka *{amount} {currency}*.\n\nChagua njia unayotaka kutumia:",
+    'gateway_choice_menu' => "💰 *WEKA PESA*\n\nChagua njia unayotaka kutumia kuweka pesa kwenye salio lako:",
     'gateway_choice_section' => 'Njia za Malipo',
     'btn_choose' => 'Chagua',
     'gateway_name_snippe' => 'Weka Pesa',

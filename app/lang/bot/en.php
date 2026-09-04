@@ -104,7 +104,7 @@ return [
     'settings_press_currency' => "⚠️ Please tap one of the currencies above 👆\n\n_Send \"#\" to return to the main menu_",
 
     // Wallet top-up gateway choice.
-    'gateway_choice_menu' => "💰 *TOP UP WALLET*\n\nYou need to top up *{amount} {currency}*.\n\nChoose how you'd like to pay:",
+    'gateway_choice_menu' => "💰 *TOP UP WALLET*\n\nChoose how you'd like to top up your wallet:",
     'gateway_choice_section' => 'Payment Methods',
     'btn_choose' => 'Choose',
     'gateway_name_snippe' => 'Top Up',
