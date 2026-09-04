@@ -27,36 +27,6 @@ class PaymentGateway extends BaseModel
         return $stmt->fetchAll();
     }
 
-    /**
-     * Which gateway codes serve a given currency — used to build the
-     * customer-facing gateway picker on wallet top-up. snippe_ke/snippe_ug
-     * are KES/UGX-only (Snippe's Sessions API); the rest are TZS-only.
-     */
-    private const CODES_BY_CURRENCY = [
-        'KES' => ['snippe_ke'],
-        'UGX' => ['snippe_ug'],
-        'TZS' => ['snippe', 'zenopay', 'harakapay'],
-    ];
-
-    /**
-     * Active gateways for the given currency, in a fixed preferred order
-     * (CODES_BY_CURRENCY) rather than the alphabetical order of all().
-     */
-    public static function activeForCurrency(string $currency): array
-    {
-        $codes = self::CODES_BY_CURRENCY[$currency] ?? self::CODES_BY_CURRENCY['TZS'];
-
-        $active = [];
-        foreach ($codes as $code) {
-            $gateway = self::findByCode($code);
-            if ($gateway !== null && $gateway['status'] === 'active') {
-                $active[] = $gateway;
-            }
-        }
-
-        return $active;
-    }
-
     public static function update(int $id, array $data): bool
     {
         $stmt = self::db()->prepare(

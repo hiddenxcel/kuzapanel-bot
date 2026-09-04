@@ -285,10 +285,6 @@ class WebhookController
                 $this->handleTopupAmount($phone, $session, $message);
                 break;
 
-            case 'AWAITING_TOPUP_GATEWAY_CHOICE':
-                $this->handleTopupGatewayChoice($phone, $session, $message);
-                break;
-
             case 'AWAITING_PAYMENT_PHONE_CHOICE':
                 $this->handlePaymentPhoneChoice($phone, $session, $message);
                 break;
@@ -423,10 +419,8 @@ class WebhookController
                 break;
 
             case 'topup':
-                // Gateway choice comes first, then the amount prompt (in
-                // handleTopupGatewayChoice) — so the customer knows which
-                // currency to type the amount in before they type it.
-                $this->sendGatewayChoice($phone, []);
+                $this->whatsapp->sendText($phone, $this->t($phone, 'topup_prompt'));
+                Session::updateState($phone, 'AWAITING_TOPUP_AMOUNT');
                 break;
 
             case 'profile':
@@ -693,86 +687,8 @@ class WebhookController
             return;
         }
 
-        // Gateway was already chosen in sendGatewayChoice()/handleTopupGatewayChoice()
-        // before this amount prompt was even shown — carry it through.
-        $tempData = $session['temp_data'];
-        $tempData['topup_amount'] = $amount;
-
-        $this->sendPhoneChoice($phone, $tempData);
-    }
-
-    /**
-     * Human-readable name + one-line description per gateway code, shown in
-     * the top-up gateway picker. Falls back to the DB row's own name for any
-     * gateway not covered here (so a new admin-added row still shows).
-     */
-    private const GATEWAY_LABELS = [
-        'snippe' => ['name' => 'gateway_name_snippe', 'desc' => 'gateway_desc_mobile_money'],
-        'snippe_ke' => ['name' => 'gateway_name_snippe', 'desc' => 'gateway_desc_mobile_money'],
-        'snippe_ug' => ['name' => 'gateway_name_snippe', 'desc' => 'gateway_desc_mobile_money'],
-        'zenopay' => ['name' => 'gateway_name_zenopay', 'desc' => 'gateway_desc_mobile_money'],
-        'harakapay' => ['name' => 'gateway_name_harakapay', 'desc' => 'gateway_desc_mobile_money'],
-    ];
-
-    /**
-     * Show every ACTIVE gateway for the customer's currency as a list — the
-     * FIRST step of wallet top-up, before the amount is even asked, so the
-     * customer knows which gateway (and therefore which currency to type
-     * the amount in) they're using before they type anything. Even a single
-     * active gateway is still shown as a one-row choice to tap, so the
-     * customer always explicitly confirms how they're paying. Only skips
-     * straight to the amount prompt when NO gateway is active for their
-     * currency, since there's genuinely nothing to show; initiatePayment()
-     * falls back to gatewayForCustomer() in that case, same as before this
-     * feature existed.
-     */
-    private function sendGatewayChoice(string $phone, array $tempData): void
-    {
-        $gateways = PaymentGateway::activeForCurrency($this->currencyFor($phone));
-
-        if ($gateways === []) {
-            $tempData['gateway'] = null;
-            $this->whatsapp->sendText($phone, $this->t($phone, 'topup_prompt', ['{currency}' => $this->currencyFor($phone)]));
-            Session::updateState($phone, 'AWAITING_TOPUP_AMOUNT', $tempData);
-
-            return;
-        }
-
-        $rows = array_map(function (array $gw) use ($phone) {
-            $labels = self::GATEWAY_LABELS[$gw['code']] ?? null;
-
-            return [
-                'id' => 'gateway:' . $gw['code'],
-                'title' => $labels !== null ? $this->t($phone, $labels['name']) : $gw['name'],
-                'description' => $labels !== null ? $this->t($phone, $labels['desc']) : '',
-            ];
-        }, $gateways);
-
-        $this->whatsapp->sendList(
-            $phone,
-            $this->t($phone, 'gateway_choice_menu'),
-            $this->t($phone, 'btn_choose'),
-            $this->t($phone, 'gateway_choice_section'),
-            $rows
-        );
-
-        Session::updateState($phone, 'AWAITING_TOPUP_GATEWAY_CHOICE', $tempData);
-    }
-
-    private function handleTopupGatewayChoice(string $phone, array $session, array $message): void
-    {
-        if ($message['type'] !== 'selection' || !str_starts_with($message['id'], 'gateway:')) {
-            $this->respondWithAiFallback($phone, $message, $this->t($phone, 'press_button_reminder'));
-
-            return;
-        }
-
-        $code = substr($message['id'], strlen('gateway:'));
-        $tempData = $session['temp_data'];
-        $tempData['gateway'] = $code;
-
-        $this->whatsapp->sendText($phone, $this->t($phone, 'topup_prompt', ['{currency}' => $this->currencyFor($phone)]));
-        Session::updateState($phone, 'AWAITING_TOPUP_AMOUNT', $tempData);
+        // Standalone wallet top-up: no pending order, amount is the full top-up amount.
+        $this->sendPhoneChoice($phone, ['topup_amount' => $amount]);
     }
 
     /**
@@ -781,9 +697,6 @@ class WebhookController
      * HarakaPay/ZenoPay are currently disabled for all markets — switch
      * back to HarakaPay for TZS <1000 once its API is enabled:
      *   return $amount < 1000 ? 'harakapay' : 'snippe';
-     *
-     * Order payment (not wallet top-up) always goes through here — the
-     * customer never picks a gateway mid-order, only during top-up.
      */
     private function gatewayForCustomer(string $phone): string
     {
@@ -993,10 +906,7 @@ class WebhookController
             return;
         }
 
-        // Wallet top-up: use the gateway the customer picked in
-        // sendGatewayChoice(), if any. Order payment never carries
-        // 'gateway' in $data, so it always falls through to auto-select.
-        $gateway = $data['gateway'] ?? $this->gatewayForCustomer($phone);
+        $gateway = $this->gatewayForCustomer($phone);
         $chargeAmount = PaymentGateway::grossUpAmount($amount, $gateway);
         $localRef = 'KZPTOP' . $customer['id'] . time();
         $webhookBase = rtrim($this->config['app']['url'], '/');
