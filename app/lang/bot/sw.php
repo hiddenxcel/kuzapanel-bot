@@ -102,6 +102,15 @@ return [
     'currency_name_kes' => 'KES (Kenya)',
     'currency_name_ugx' => 'UGX (Uganda)',
     'settings_press_currency' => "⚠️ Tafadhali bonyeza currency moja hapo juu 👆\n\n_Tuma \"#\" kurudi menu kuu_",
+
+    // Wallet top-up gateway choice.
+    'gateway_choice_menu' => "💰 *WEKA PESA*\n\nUnahitaji kuweka *{amount} {currency}*.\n\nChagua njia unayotaka kutumia:",
+    'gateway_choice_section' => 'Njia za Malipo',
+    'btn_choose' => 'Chagua',
+    'gateway_name_snippe' => 'Weka Pesa',
+    'gateway_name_zenopay' => 'ZenoPay',
+    'gateway_name_harakapay' => 'HarakaPay',
+    'gateway_desc_mobile_money' => 'Mobile Money / Kadi',
     'currency_changed' => "✅ Umebadilisha currency yako.\n\nBei zote zitaonekana kwa currency mpya kuanzia sasa. 👇",
 
     // AI / support.

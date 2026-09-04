@@ -285,6 +285,10 @@ class WebhookController
                 $this->handleTopupAmount($phone, $session, $message);
                 break;
 
+            case 'AWAITING_TOPUP_GATEWAY_CHOICE':
+                $this->handleTopupGatewayChoice($phone, $session, $message);
+                break;
+
             case 'AWAITING_PAYMENT_PHONE_CHOICE':
                 $this->handlePaymentPhoneChoice($phone, $session, $message);
                 break;
@@ -687,8 +691,81 @@ class WebhookController
             return;
         }
 
-        // Standalone wallet top-up: no pending order, amount is the full top-up amount.
-        $this->sendPhoneChoice($phone, ['topup_amount' => $amount]);
+        // Standalone wallet top-up: let the customer pick which gateway to
+        // pay with (Order payment does NOT go through this — it still
+        // auto-selects via gatewayForCustomer(), unchanged).
+        $this->sendGatewayChoice($phone, ['topup_amount' => $amount]);
+    }
+
+    /**
+     * Human-readable name + one-line description per gateway code, shown in
+     * the top-up gateway picker. Falls back to the DB row's own name for any
+     * gateway not covered here (so a new admin-added row still shows).
+     */
+    private const GATEWAY_LABELS = [
+        'snippe' => ['name' => 'gateway_name_snippe', 'desc' => 'gateway_desc_mobile_money'],
+        'snippe_ke' => ['name' => 'gateway_name_snippe', 'desc' => 'gateway_desc_mobile_money'],
+        'snippe_ug' => ['name' => 'gateway_name_snippe', 'desc' => 'gateway_desc_mobile_money'],
+        'zenopay' => ['name' => 'gateway_name_zenopay', 'desc' => 'gateway_desc_mobile_money'],
+        'harakapay' => ['name' => 'gateway_name_harakapay', 'desc' => 'gateway_desc_mobile_money'],
+    ];
+
+    /**
+     * Show every ACTIVE gateway for the customer's currency as a list, so
+     * they choose how to pay instead of the bot auto-selecting one. Skips
+     * straight to the phone-number step if only one (or zero) gateway is
+     * available, since there's nothing to actually choose in that case.
+     */
+    private function sendGatewayChoice(string $phone, array $tempData): void
+    {
+        $gateways = PaymentGateway::activeForCurrency($this->currencyFor($phone));
+
+        if (count($gateways) <= 1) {
+            $tempData['gateway'] = $gateways[0]['code'] ?? null;
+            $this->sendPhoneChoice($phone, $tempData);
+
+            return;
+        }
+
+        $rows = array_map(function (array $gw) use ($phone) {
+            $labels = self::GATEWAY_LABELS[$gw['code']] ?? null;
+
+            return [
+                'id' => 'gateway:' . $gw['code'],
+                'title' => $labels !== null ? $this->t($phone, $labels['name']) : $gw['name'],
+                'description' => $labels !== null ? $this->t($phone, $labels['desc']) : '',
+            ];
+        }, $gateways);
+
+        $amount = $tempData['topup_amount'] ?? 0;
+
+        $this->whatsapp->sendList(
+            $phone,
+            $this->t($phone, 'gateway_choice_menu', [
+                '{amount}' => $this->money($phone, (float) $amount),
+                '{currency}' => $this->currencyFor($phone),
+            ]),
+            $this->t($phone, 'btn_choose'),
+            $this->t($phone, 'gateway_choice_section'),
+            $rows
+        );
+
+        Session::updateState($phone, 'AWAITING_TOPUP_GATEWAY_CHOICE', $tempData);
+    }
+
+    private function handleTopupGatewayChoice(string $phone, array $session, array $message): void
+    {
+        if ($message['type'] !== 'selection' || !str_starts_with($message['id'], 'gateway:')) {
+            $this->respondWithAiFallback($phone, $message, $this->t($phone, 'press_button_reminder'));
+
+            return;
+        }
+
+        $code = substr($message['id'], strlen('gateway:'));
+        $tempData = $session['temp_data'];
+        $tempData['gateway'] = $code;
+
+        $this->sendPhoneChoice($phone, $tempData);
     }
 
     /**
@@ -697,6 +774,9 @@ class WebhookController
      * HarakaPay/ZenoPay are currently disabled for all markets — switch
      * back to HarakaPay for TZS <1000 once its API is enabled:
      *   return $amount < 1000 ? 'harakapay' : 'snippe';
+     *
+     * Order payment (not wallet top-up) always goes through here — the
+     * customer never picks a gateway mid-order, only during top-up.
      */
     private function gatewayForCustomer(string $phone): string
     {
@@ -906,7 +986,10 @@ class WebhookController
             return;
         }
 
-        $gateway = $this->gatewayForCustomer($phone);
+        // Wallet top-up: use the gateway the customer picked in
+        // sendGatewayChoice(), if any. Order payment never carries
+        // 'gateway' in $data, so it always falls through to auto-select.
+        $gateway = $data['gateway'] ?? $this->gatewayForCustomer($phone);
         $chargeAmount = PaymentGateway::grossUpAmount($amount, $gateway);
         $localRef = 'KZPTOP' . $customer['id'] . time();
         $webhookBase = rtrim($this->config['app']['url'], '/');

@@ -102,6 +102,15 @@ return [
     'currency_name_kes' => 'KES (Kenya)',
     'currency_name_ugx' => 'UGX (Uganda)',
     'settings_press_currency' => "⚠️ Please tap one of the currencies above 👆\n\n_Send \"#\" to return to the main menu_",
+
+    // Wallet top-up gateway choice.
+    'gateway_choice_menu' => "💰 *TOP UP WALLET*\n\nYou need to top up *{amount} {currency}*.\n\nChoose how you'd like to pay:",
+    'gateway_choice_section' => 'Payment Methods',
+    'btn_choose' => 'Choose',
+    'gateway_name_snippe' => 'Top Up',
+    'gateway_name_zenopay' => 'ZenoPay',
+    'gateway_name_harakapay' => 'HarakaPay',
+    'gateway_desc_mobile_money' => 'Mobile Money / Card',
     'currency_changed' => "✅ Your currency has been updated.\n\nAll prices will now show in your new currency. 👇",
 
     // AI / support.
