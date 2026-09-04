@@ -423,8 +423,10 @@ class WebhookController
                 break;
 
             case 'topup':
-                $this->whatsapp->sendText($phone, $this->t($phone, 'topup_prompt'));
-                Session::updateState($phone, 'AWAITING_TOPUP_AMOUNT');
+                // Gateway choice comes first, then the amount prompt (in
+                // handleTopupGatewayChoice) — so the customer knows which
+                // currency to type the amount in before they type it.
+                $this->sendGatewayChoice($phone, []);
                 break;
 
             case 'profile':
@@ -691,10 +693,12 @@ class WebhookController
             return;
         }
 
-        // Standalone wallet top-up: let the customer pick which gateway to
-        // pay with (Order payment does NOT go through this — it still
-        // auto-selects via gatewayForCustomer(), unchanged).
-        $this->sendGatewayChoice($phone, ['topup_amount' => $amount]);
+        // Gateway was already chosen in sendGatewayChoice()/handleTopupGatewayChoice()
+        // before this amount prompt was even shown — carry it through.
+        $tempData = $session['temp_data'];
+        $tempData['topup_amount'] = $amount;
+
+        $this->sendPhoneChoice($phone, $tempData);
     }
 
     /**
@@ -711,13 +715,16 @@ class WebhookController
     ];
 
     /**
-     * Show every ACTIVE gateway for the customer's currency as a list, so
-     * they choose how to pay instead of the bot auto-selecting one — even
-     * when there's only one gateway active, so the customer always sees
-     * (and confirms) how they're paying. Only skips straight to the
-     * phone-number step when NO gateway is active for their currency, since
-     * there's genuinely nothing to show; initiatePayment() falls back to
-     * gatewayForCustomer() in that case, same as before this feature.
+     * Show every ACTIVE gateway for the customer's currency as a list — the
+     * FIRST step of wallet top-up, before the amount is even asked, so the
+     * customer knows which gateway (and therefore which currency to type
+     * the amount in) they're using before they type anything. Even a single
+     * active gateway is still shown as a one-row choice to tap, so the
+     * customer always explicitly confirms how they're paying. Only skips
+     * straight to the amount prompt when NO gateway is active for their
+     * currency, since there's genuinely nothing to show; initiatePayment()
+     * falls back to gatewayForCustomer() in that case, same as before this
+     * feature existed.
      */
     private function sendGatewayChoice(string $phone, array $tempData): void
     {
@@ -725,7 +732,8 @@ class WebhookController
 
         if ($gateways === []) {
             $tempData['gateway'] = null;
-            $this->sendPhoneChoice($phone, $tempData);
+            $this->whatsapp->sendText($phone, $this->t($phone, 'topup_prompt', ['{currency}' => $this->currencyFor($phone)]));
+            Session::updateState($phone, 'AWAITING_TOPUP_AMOUNT', $tempData);
 
             return;
         }
@@ -740,14 +748,9 @@ class WebhookController
             ];
         }, $gateways);
 
-        $amount = $tempData['topup_amount'] ?? 0;
-
         $this->whatsapp->sendList(
             $phone,
-            $this->t($phone, 'gateway_choice_menu', [
-                '{amount}' => $this->money($phone, (float) $amount),
-                '{currency}' => $this->currencyFor($phone),
-            ]),
+            $this->t($phone, 'gateway_choice_menu'),
             $this->t($phone, 'btn_choose'),
             $this->t($phone, 'gateway_choice_section'),
             $rows
@@ -768,7 +771,8 @@ class WebhookController
         $tempData = $session['temp_data'];
         $tempData['gateway'] = $code;
 
-        $this->sendPhoneChoice($phone, $tempData);
+        $this->whatsapp->sendText($phone, $this->t($phone, 'topup_prompt', ['{currency}' => $this->currencyFor($phone)]));
+        Session::updateState($phone, 'AWAITING_TOPUP_AMOUNT', $tempData);
     }
 
     /**
