@@ -712,16 +712,19 @@ class WebhookController
 
     /**
      * Show every ACTIVE gateway for the customer's currency as a list, so
-     * they choose how to pay instead of the bot auto-selecting one. Skips
-     * straight to the phone-number step if only one (or zero) gateway is
-     * available, since there's nothing to actually choose in that case.
+     * they choose how to pay instead of the bot auto-selecting one — even
+     * when there's only one gateway active, so the customer always sees
+     * (and confirms) how they're paying. Only skips straight to the
+     * phone-number step when NO gateway is active for their currency, since
+     * there's genuinely nothing to show; initiatePayment() falls back to
+     * gatewayForCustomer() in that case, same as before this feature.
      */
     private function sendGatewayChoice(string $phone, array $tempData): void
     {
         $gateways = PaymentGateway::activeForCurrency($this->currencyFor($phone));
 
-        if (count($gateways) <= 1) {
-            $tempData['gateway'] = $gateways[0]['code'] ?? null;
+        if ($gateways === []) {
+            $tempData['gateway'] = null;
             $this->sendPhoneChoice($phone, $tempData);
 
             return;
