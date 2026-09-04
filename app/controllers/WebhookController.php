@@ -419,7 +419,7 @@ class WebhookController
                 break;
 
             case 'topup':
-                $this->whatsapp->sendText($phone, $this->t($phone, 'topup_prompt'));
+                $this->whatsapp->sendText($phone, $this->t($phone, 'topup_prompt', ['{currency}' => $this->currencyFor($phone)]));
                 Session::updateState($phone, 'AWAITING_TOPUP_AMOUNT');
                 break;
 
