@@ -14,7 +14,7 @@ class Service extends BaseModel
 
     public static function allActive(): array
     {
-        $stmt = self::db()->query("SELECT * FROM services WHERE status = 'active' ORDER BY sort_order, platform, name");
+        $stmt = self::db()->query("SELECT * FROM services WHERE status = 'active' ORDER BY sort_order, platform, name_sw");
 
         return $stmt->fetchAll();
     }
@@ -22,7 +22,7 @@ class Service extends BaseModel
     public static function activeByPlatform(string $platform): array
     {
         $stmt = self::db()->prepare(
-            "SELECT * FROM services WHERE status = 'active' AND platform = ? ORDER BY sort_order, name"
+            "SELECT * FROM services WHERE status = 'active' AND platform = ? ORDER BY sort_order, name_sw"
         );
         $stmt->execute([$platform]);
 
@@ -33,7 +33,7 @@ class Service extends BaseModel
     {
         if ($category === null) {
             $stmt = self::db()->prepare(
-                "SELECT * FROM services WHERE status = 'active' AND platform = ? AND category IS NULL ORDER BY sort_order, name"
+                "SELECT * FROM services WHERE status = 'active' AND platform = ? AND category IS NULL ORDER BY sort_order, name_sw"
             );
             $stmt->execute([$platform]);
 
@@ -41,7 +41,7 @@ class Service extends BaseModel
         }
 
         $stmt = self::db()->prepare(
-            "SELECT * FROM services WHERE status = 'active' AND platform = ? AND category = ? ORDER BY sort_order, name"
+            "SELECT * FROM services WHERE status = 'active' AND platform = ? AND category = ? ORDER BY sort_order, name_sw"
         );
         $stmt->execute([$platform, $category]);
 
@@ -111,7 +111,7 @@ class Service extends BaseModel
 
     public static function byProvider(int $providerId): array
     {
-        $stmt = self::db()->prepare('SELECT * FROM services WHERE provider_id = ? ORDER BY sort_order, name');
+        $stmt = self::db()->prepare('SELECT * FROM services WHERE provider_id = ? ORDER BY sort_order, name_sw');
         $stmt->execute([$providerId]);
 
         return $stmt->fetchAll();
@@ -119,7 +119,7 @@ class Service extends BaseModel
 
     public static function all(): array
     {
-        $stmt = self::db()->query('SELECT * FROM services ORDER BY sort_order, platform, name');
+        $stmt = self::db()->query('SELECT * FROM services ORDER BY sort_order, platform, name_sw');
 
         return $stmt->fetchAll();
     }
@@ -206,16 +206,17 @@ class Service extends BaseModel
 
         $stmt = self::db()->prepare(
             'INSERT INTO services
-                (provider_id, provider_service_id, platform, category, name, unit_label, cost_price, my_price,
+                (provider_id, provider_service_id, platform, category, name_sw, name_en, unit_label, cost_price, my_price,
                  min_quantity, max_quantity, link_instructions, link_instructions_image, status, sort_order)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $data['provider_id'],
             $data['provider_service_id'],
             $data['platform'],
             $data['category'] ?? null,
-            $data['name'],
+            $data['name_sw'],
+            $data['name_en'],
             $data['unit_label'] ?? 'Followers',
             $data['cost_price'],
             $data['my_price'],
@@ -234,7 +235,7 @@ class Service extends BaseModel
     {
         $stmt = self::db()->prepare(
             'UPDATE services SET
-                provider_id = ?, provider_service_id = ?, platform = ?, category = ?, name = ?, unit_label = ?,
+                provider_id = ?, provider_service_id = ?, platform = ?, category = ?, name_sw = ?, name_en = ?, unit_label = ?,
                 cost_price = ?, my_price = ?, min_quantity = ?, max_quantity = ?,
                 link_instructions = ?, link_instructions_image = ?, status = ?
              WHERE id = ?'
@@ -245,7 +246,8 @@ class Service extends BaseModel
             $data['provider_service_id'],
             $data['platform'],
             $data['category'] ?? null,
-            $data['name'],
+            $data['name_sw'],
+            $data['name_en'],
             $data['unit_label'],
             $data['cost_price'],
             $data['my_price'],
@@ -256,6 +258,23 @@ class Service extends BaseModel
             $data['status'],
             $id,
         ]);
+    }
+
+    /**
+     * The service's name in the given bot language ('sw' or 'en'), falling
+     * back to whichever of the two isn't blank — a service an admin has
+     * only translated into one language should never show blank text to a
+     * customer using the other.
+     */
+    public static function nameFor(array $service, string $lang): string
+    {
+        $preferred = $lang === 'en' ? ($service['name_en'] ?? '') : ($service['name_sw'] ?? '');
+
+        if ($preferred !== '') {
+            return $preferred;
+        }
+
+        return ($service['name_sw'] ?? '') !== '' ? $service['name_sw'] : ($service['name_en'] ?? '');
     }
 
     public static function delete(int $id): bool

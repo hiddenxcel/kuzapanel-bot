@@ -97,7 +97,7 @@ class Order extends BaseModel
         $offset = ($page - 1) * $perPage;
 
         $stmt = self::db()->prepare(
-            "SELECT o.*, c.name AS customer_name, s.name AS service_name, s.platform AS service_platform
+            "SELECT o.*, c.name AS customer_name, s.name_sw AS service_name, s.platform AS service_platform
              FROM orders o
              LEFT JOIN customers c ON c.phone = o.customer_phone
              LEFT JOIN services s ON s.id = o.service_id

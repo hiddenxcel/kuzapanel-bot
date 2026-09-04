@@ -102,12 +102,14 @@ foreach ($orders as $order) {
         // if the order somehow has none.
         $orderNumber = !empty($order['provider_order_id']) ? $order['provider_order_id'] : $order['id'];
 
+        $serviceName = Service::nameFor($service, $lang);
+
         if ($localStatus === 'completed') {
             $whatsapp->sendText(
                 $order['customer_phone'],
                 BotLang::get($lang, 'order_completed_notify', [
                     '{number}' => $orderNumber,
-                    '{service}' => $service['name'],
+                    '{service}' => $serviceName,
                     '{qty}' => $qty,
                     '{unit}' => $unit,
                     '{link}' => $order['link'],
@@ -118,7 +120,7 @@ foreach ($orders as $order) {
                 $order['customer_phone'],
                 BotLang::get($lang, 'order_cancelled_notify', [
                     '{number}' => $orderNumber,
-                    '{service}' => $service['name'],
+                    '{service}' => $serviceName,
                 ])
             );
         }

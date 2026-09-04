@@ -35,7 +35,7 @@ class AdminNotifier
             "🆔 Oda #{$order['id']}\n" .
             $providerLine .
             "👤 Mteja: " . ($customer['name'] ?? 'Mteja') . " ({$customer['phone']})\n" .
-            "🎯 Huduma: {$service['name']}\n" .
+            "🎯 Huduma: {$service['name_sw']}\n" .
             "🔢 Kiasi: " . number_format((int) $order['quantity'], 0) . " {$service['unit_label']}\n" .
             "💰 Gharama: " . number_format((float) $order['amount'], 0) . " TZS\n" .
             "🔗 Link: {$order['link']}"

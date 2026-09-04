@@ -290,6 +290,14 @@ Lang::load();
             box-shadow: 0 0 0 3px var(--primary-soft);
             background: #fff;
         }
+        /* ---- WhatsApp character-limit counter (see data-maxlen inputs) ---- */
+        .char-counter {
+            display: block; text-align: right; font-size: 11px; font-weight: 600;
+            color: var(--text-soft); margin-top: 4px;
+        }
+        .char-counter.warn { color: var(--amber); }
+        .char-counter.over { color: var(--red); font-weight: 700; }
+        }
 
         /* ---- Alerts ---- */
         .alert { padding: 12px 16px; border-radius: 10px; margin-bottom: 18px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 10px; animation: fadeInUp .25s ease; }

@@ -651,7 +651,7 @@ class WebhookController
 
         foreach (array_slice($orders, 0, 10) as $order) {
             $service = Service::find($order['service_id']);
-            $serviceName = $service['name'] ?? $this->t($phone, 'default_service_name');
+            $serviceName = $service ? Service::nameFor($service, $this->langFor($phone)) : $this->t($phone, 'default_service_name');
 
             // Show the provider's order number; fall back to our internal id
             // only if the order hasn't reached the provider yet.
@@ -1197,11 +1197,12 @@ class WebhookController
     private function sendServiceMenu(string $phone, string $platform, ?string $category, array $services, ?string $name): void
     {
         $greetingName = $name !== null && $name !== '' ? $name : $this->t($phone, 'default_customer_name');
+        $lang = $this->langFor($phone);
 
         $rows = array_map(
             fn (array $service) => [
                 'id' => 'service:' . $service['id'],
-                'title' => mb_substr($service['name'], 0, 24),
+                'title' => mb_substr(Service::nameFor($service, $lang), 0, 24),
                 'description' => $this->t($phone, 'price_per_1000', [
                     '{price}' => $this->money($phone, (float) $service['my_price']),
                     '{currency}' => $this->currencyFor($phone),
@@ -1279,7 +1280,7 @@ class WebhookController
 
         $this->whatsapp->sendList(
             $phone,
-            $this->t($phone, 'qty_menu', ['{service}' => $service['name']]),
+            $this->t($phone, 'qty_menu', ['{service}' => Service::nameFor($service, $this->langFor($phone))]),
             $this->t($phone, 'btn_packages'),
             'Vifurushi',
             $rows
@@ -1468,7 +1469,7 @@ class WebhookController
             $phone,
             $this->t($phone, 'order_confirm', [
                 '{platform}' => $tempData['platform'],
-                '{service}' => $service['name'],
+                '{service}' => Service::nameFor($service, $this->langFor($phone)),
                 '{link}' => $link,
                 '{qty}' => $quantity,
                 '{amount}' => $this->money($phone, $amount),

@@ -34,7 +34,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'provider_service_id' => trim($_POST['provider_service_id'] ?? ''),
             'platform' => trim($platform),
             'category' => trim($category) ?: null,
-            'name' => trim($_POST['name'] ?? ''),
+            'name_sw' => trim($_POST['name_sw'] ?? ''),
+            'name_en' => trim($_POST['name_en'] ?? ''),
             'unit_label' => $unitLabel,
             'cost_price' => $_POST['cost_price'] ?? '',
             'my_price' => $_POST['my_price'] ?? '',
@@ -47,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (
             $data['provider_id'] === 0 || $data['provider_service_id'] === ''
-            || $data['platform'] === '' || $data['name'] === '' || $data['unit_label'] === ''
+            || $data['platform'] === '' || ($data['name_sw'] === '' && $data['name_en'] === '') || $data['unit_label'] === ''
             || $data['cost_price'] === '' || $data['my_price'] === ''
         ) {
             $error = t('services.fill_all');
@@ -187,10 +188,10 @@ require __DIR__ . '/includes/layout_header.php';
                      data-id="<?= $s['id'] ?>"
                      data-platform="<?= htmlspecialchars($s['platform']) ?>"
                      data-status="<?= $s['status'] ?>"
-                     data-search="<?= htmlspecialchars(mb_strtolower($s['name'] . ' ' . $s['platform'] . ' ' . ($s['category'] ?? ''))) ?>">
+                     data-search="<?= htmlspecialchars(mb_strtolower($s['name_sw'] . ' ' . $s['name_en'] . ' ' . $s['platform'] . ' ' . ($s['category'] ?? ''))) ?>">
                     <div class="item-card-top">
                         <input type="checkbox" class="item-card-check" data-id="<?= $s['id'] ?>">
-                        <div class="item-card-title">#<?= $s['id'] ?> — <?= htmlspecialchars($s['name']) ?></div>
+                        <div class="item-card-title">#<?= $s['id'] ?> — <?= htmlspecialchars($s['name_sw']) ?> <span style="color:var(--text-soft);font-weight:500;">/ <?= htmlspecialchars($s['name_en']) ?></span></div>
                         <span class="badge badge-<?= $s['status'] ?>"><?= $s['status'] ?></span>
                     </div>
                     <div class="item-card-meta">
@@ -269,8 +270,14 @@ require __DIR__ . '/includes/layout_header.php';
                         <input type="text" name="provider_service_id" value="<?= htmlspecialchars($editing['provider_service_id'] ?? '') ?>" required>
                     </div>
                     <div class="form-group">
-                        <label><?= t('services.name') ?></label>
-                        <input type="text" name="name" value="<?= htmlspecialchars($editing['name'] ?? '') ?>" required>
+                        <label><?= t('services.name_sw') ?></label>
+                        <input type="text" name="name_sw" value="<?= htmlspecialchars($editing['name_sw'] ?? '') ?>" data-maxlen="24">
+                        <p style="font-size:11.5px;color:var(--text-soft);margin:4px 0 0;"><?= t('services.name_whatsapp_hint') ?></p>
+                    </div>
+                    <div class="form-group">
+                        <label><?= t('services.name_en') ?></label>
+                        <input type="text" name="name_en" value="<?= htmlspecialchars($editing['name_en'] ?? '') ?>" data-maxlen="24">
+                        <p style="font-size:11.5px;color:var(--text-soft);margin:4px 0 0;"><?= t('services.name_whatsapp_hint') ?></p>
                     </div>
                     <?php
                         $currentPlatform = $editing['platform'] ?? '';
@@ -550,7 +557,8 @@ require __DIR__ . '/includes/layout_header.php';
 
         form.provider_id.value = svc.provider_id;
         form.provider_service_id.value = svc.provider_service_id;
-        form.name.value = svc.name;
+        form.name_sw.value = svc.name_sw;
+        form.name_en.value = svc.name_en;
         form.cost_price.value = svc.cost_price;
         form.my_price.value = svc.my_price;
         form.min_quantity.value = svc.min_quantity;
